@@ -42,13 +42,13 @@
       "media": [
         {
           "type": "font",
-          "name": "FONT_LCD_40",
+          "name": "FONT_LCD_42",
           "file": "fonts/DSEG7Classic-Bold.ttf",
           "characterRegex": "[0-9:]"
         },
         {
           "type": "font",
-          "name": "FONT_LCD_18",
+          "name": "FONT_LCD_22",
           "file": "fonts/DSEG7Classic-Bold.ttf",
           "characterRegex": "[0-9]"
         },

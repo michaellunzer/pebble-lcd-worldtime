@@ -3,8 +3,8 @@
 //
 //   header   18px  day-of-week · date · city tag · AM/PM (accent)
 //   battery   6px  20-segment bar, outline = 100%, accent below 20%
-//   time     76px  framed box, DSEG7 40px digits over ghost segments,
-//                  blinking colon, accent seconds with SEC label
+//   time     76px  framed box, DSEG7 42px digits over ghost segments,
+//                  blinking colon, accent 22px seconds with SEC label
 //   map      46px  60x19 dot-matrix world, live day/night terminator
 //   footer  ~50px  WEATHER (icon + °F + hi/lo) · STEPS (count + bar)
 //
@@ -49,7 +49,7 @@ static Window *s_window;
 static Layer *s_bg_layer, *s_header_layer, *s_battery_layer, *s_time_layer,
              *s_map_layer, *s_footer_layer;
 
-static GFont s_font_dseg40, s_font_dseg18, s_font_tech18, s_font_tech14,
+static GFont s_font_dseg42, s_font_dseg22, s_font_tech18, s_font_tech14,
              s_font_tech11, s_font_tech8;
 static GBitmap *s_stipple;
 static GColor s_stipple_palette[2];
@@ -230,46 +230,48 @@ static void time_update_proc(Layer *layer, GContext *ctx) {
   snprintf(ss, sizeof(ss), "%02d", s_now.tm_sec);
 
   // Measure once per draw; DSEG7 is fixed-width so "88" == any digits.
-  GSize d2 = text_size("88", s_font_dseg40);       // HH or MM block
-  GSize colon = text_size(":", s_font_dseg40);
-  GSize sec2 = text_size("88", s_font_dseg18);
+  GSize d2 = text_size("88", s_font_dseg42);       // HH or MM block
+  GSize colon = text_size(":", s_font_dseg42);
+  GSize sec2 = text_size("88", s_font_dseg22);
   GSize sec_label = text_size("SEC", s_font_tech8);
 
-  int sec_col_w = sec2.w > sec_label.w ? sec2.w : sec_label.w;
+  // One line: HH:MM plus the seconds column. The box is widened to 188px
+  // (vs the 180px content column) so 42px digits and 22px seconds fit
+  // side by side — the largest combo the pixel grid allows.
   int total_w = d2.w * 2 + colon.w;
-  if (g_settings.show_seconds) total_w += 4 + sec_col_w;
+  if (g_settings.show_seconds) total_w += 2 + sec2.w;
   int x = (b.size.w - total_w) / 2;
+  if (x < 2) x = 2;
   int y = (b.size.h - d2.h) / 2;
 
-  // Ghost (unlit) segments behind everything.
-  graphics_context_set_text_color(ctx, T->ghost);
-  draw_text(ctx, "88", s_font_dseg40, T->ghost, GRect(x, y, d2.w + 2, d2.h + 2));
-  draw_text(ctx, ":", s_font_dseg40, T->ghost,
+  // Ghost (unlit) segments behind the lit digits.
+  draw_text(ctx, "88", s_font_dseg42, T->ghost, GRect(x, y, d2.w + 2, d2.h + 2));
+  draw_text(ctx, ":", s_font_dseg42, T->ghost,
             GRect(x + d2.w, y, colon.w + 2, d2.h + 2));
-  draw_text(ctx, "88", s_font_dseg40, T->ghost,
+  draw_text(ctx, "88", s_font_dseg42, T->ghost,
             GRect(x + d2.w + colon.w, y, d2.w + 2, d2.h + 2));
 
   // Lit digits. Colon blinks at the design's 0.5 Hz cycle (steady when
   // seconds are off — the face only redraws once a minute then).
-  draw_text(ctx, hh, s_font_dseg40, T->ink, GRect(x, y, d2.w + 2, d2.h + 2));
+  draw_text(ctx, hh, s_font_dseg42, T->ink, GRect(x, y, d2.w + 2, d2.h + 2));
   if (!g_settings.show_seconds || s_now.tm_sec % 2 == 0) {
-    draw_text(ctx, ":", s_font_dseg40, T->ink,
+    draw_text(ctx, ":", s_font_dseg42, T->ink,
               GRect(x + d2.w, y, colon.w + 2, d2.h + 2));
   }
-  draw_text(ctx, mm, s_font_dseg40, T->ink,
+  draw_text(ctx, mm, s_font_dseg42, T->ink,
             GRect(x + d2.w + colon.w, y, d2.w + 2, d2.h + 2));
 
   if (!g_settings.show_seconds) return;
 
   // Seconds column: SEC label over accent digits, bottom-aligned with HH:MM.
-  int sec_x = x + d2.w * 2 + colon.w + 4;
+  int sec_x = x + d2.w * 2 + colon.w + 2;
   int sec_y = y + d2.h - sec2.h - 2;
   draw_text(ctx, "SEC", s_font_tech8, T->mute,
             GRect(sec_x, sec_y - sec_label.h - 2, sec_label.w + 2,
                   sec_label.h + 2));
-  draw_text(ctx, "88", s_font_dseg18, T->ghost,
+  draw_text(ctx, "88", s_font_dseg22, T->ghost,
             GRect(sec_x, sec_y, sec2.w + 2, sec2.h + 2));
-  draw_text(ctx, ss, s_font_dseg18, T->accent,
+  draw_text(ctx, ss, s_font_dseg22, T->accent,
             GRect(sec_x, sec_y, sec2.w + 2, sec2.h + 2));
 }
 
@@ -499,10 +501,10 @@ static void inbox_received(DictionaryIterator *iter, void *context) {
 static void window_load(Window *window) {
   Layer *root = window_get_root_layer(window);
 
-  s_font_dseg40 = fonts_load_custom_font(
-      resource_get_handle(RESOURCE_ID_FONT_LCD_40));
-  s_font_dseg18 = fonts_load_custom_font(
-      resource_get_handle(RESOURCE_ID_FONT_LCD_18));
+  s_font_dseg42 = fonts_load_custom_font(
+      resource_get_handle(RESOURCE_ID_FONT_LCD_42));
+  s_font_dseg22 = fonts_load_custom_font(
+      resource_get_handle(RESOURCE_ID_FONT_LCD_22));
   s_font_tech18 = fonts_load_custom_font(
       resource_get_handle(RESOURCE_ID_FONT_TECH_18));
   s_font_tech14 = fonts_load_custom_font(
@@ -526,7 +528,9 @@ static void window_load(Window *window) {
   layer_set_update_proc(s_battery_layer, battery_update_proc);
   layer_add_child(root, s_battery_layer);
 
-  s_time_layer = layer_create(GRect(INNER_X, TIME_TOP, INNER_W, TIME_H));
+  // Full-bleed to the screen padding (188px vs the 180px content column)
+  // to buy the extra width the one-line time + seconds layout needs.
+  s_time_layer = layer_create(GRect(PAD, TIME_TOP, SCREEN_W - 2 * PAD, TIME_H));
   layer_set_update_proc(s_time_layer, time_update_proc);
   layer_add_child(root, s_time_layer);
 
@@ -546,8 +550,8 @@ static void window_unload(Window *window) {
   layer_destroy(s_time_layer);
   layer_destroy(s_map_layer);
   layer_destroy(s_footer_layer);
-  fonts_unload_custom_font(s_font_dseg40);
-  fonts_unload_custom_font(s_font_dseg18);
+  fonts_unload_custom_font(s_font_dseg42);
+  fonts_unload_custom_font(s_font_dseg22);
   fonts_unload_custom_font(s_font_tech18);
   fonts_unload_custom_font(s_font_tech14);
   fonts_unload_custom_font(s_font_tech11);

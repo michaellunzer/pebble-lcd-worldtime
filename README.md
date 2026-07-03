@@ -10,7 +10,7 @@ of truth for the layout.
 │ THU 14 MAY        [SF]  PM   │  header 18px
 │ ▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯         │  battery bar 6px (20 segments)
 │ ┌──────────────────────────┐ │
-│ │  02:32  ³²SEC            │ │  time box 76px, DSEG7 44px + ghost
+│ │  02:32  ³²SEC            │ │  time box 76px, DSEG7 42px + ghost
 │ └──────────────────────────┘ │
 │ ▓▓░ dot-matrix world map ░▓▓ │  46px, live day/night terminator
 │  WEATHER      │      STEPS   │  footer: icon+°F+H/L · count+bar
@@ -23,7 +23,7 @@ of truth for the layout.
 |---|---|---|---|
 | Header | 10 | 18 | day-of-week, date, city tag, AM/PM (accent) |
 | Battery | 32 | 6 | 20 segments, outline = 100 %, accent ≤ 20 % |
-| Time | 42 | 76 | framed box, DSEG7 digits over ghost segments, blinking colon, accent seconds |
+| Time | 42 | 76 | framed box (full 188px width), DSEG7 42px digits over ghost segments, blinking colon, accent 22px seconds |
 | Map | 122 | 46 | 60 × 19 dot grid, solar terminator, subsolar marker |
 | Footer | 172 | 50 | WEATHER · STEPS with progress bar |
 
@@ -61,9 +61,10 @@ on the watch.
 - **Header text is 14 px** (spec says 11): the prototype's CSS pixels
   read larger than real pixels on the 200 px-wide LCD, so the header row
   is bumped for legibility (city-tag box 11 px).
-- **Time digits are 40 px** (spec says 44): DSEG7's real advance is 0.82 em,
-  so 44 px digits plus the seconds column overflow the 180 px inner width
-  on the actual pixel grid. 40 px is the largest size that fits.
+- **Time digits are 42 px, seconds 22 px** (spec says 44/18): the time
+  box spans the full 188 px screen padding (the other strips keep the
+  180 px column) — the largest one-line HH:MM + seconds combo DSEG7's
+  advance allows on the pixel grid.
 - Font resource names must not contain digits before the size — the SDK's
   fontgen takes the *first* number in the name as the pixel height
   (hence `FONT_LCD_40`, not `FONT_DSEG7_40`).
@@ -101,8 +102,8 @@ own `-Dtime_t=long`.
 ## Fonts
 
 - [DSEG7 Classic Bold](https://github.com/keshikan/DSEG) v0.46 — digits
-  (40 px time, 18 px seconds). SIL OFL 1.1, see
+  (42 px time, 22 px seconds). SIL OFL 1.1, see
   `resources/fonts/DSEG-LICENSE.txt`.
 - [Share Tech Mono](https://fonts.google.com/specimen/Share+Tech+Mono) —
-  labels (18/11/8 px). SIL OFL 1.1, see
+  labels (18/14/11/8 px). SIL OFL 1.1, see
   `resources/fonts/ShareTechMono-OFL.txt`.
