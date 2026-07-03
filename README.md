@@ -31,14 +31,36 @@ Screen padding 6 px; content inset to x = 10, width 180. The LCD stipple
 texture (prebuilt 1-bit bitmap, one blit per frame) covers the face and
 stops at the time box edges, per the design.
 
+## Settings
+
+All user options live in a Clay configuration page (open the watchface's
+settings in the Pebble mobile app):
+
+- **Location** — city code shown in the header box, home-dot latitude /
+  longitude (drawn on the map), and whether weather uses the phone's GPS
+  or those fixed coordinates.
+- **Theme** — one of the four LCD variants, either fixed or in **auto
+  day/night mode**: pick a day theme and a night theme plus the hours
+  they switch (defaults: positive 07:00–20:00, negative overnight).
+- **Display** — show/hide seconds (hiding them drops the face to
+  once-a-minute wakeups and saves battery), show/hide the weather and
+  steps sections (a solo section takes the full footer width), °F/°C,
+  and the step goal for the progress bar.
+
+Settings are pushed over AppMessage (`src/c/settings.c`) and persisted
+on the watch.
+
 ## Design → device deviations
 
 - **Colors** are quantized to Pebble's 64-color palette. Positive LCD's
   `#c9c4ae` tan becomes `GColorBrass`, the rust accent `#7a3a18` becomes
   `GColorWindsorTan`, and the prototype's alpha-based ghost/stipple/mute
   tones map to solid Light/DarkGray. All four themes are in
-  `src/c/theme.h` — change `ACTIVE_THEME` to switch.
+  `src/c/theme.h`; the active one is chosen at runtime from settings.
 - **Ghost segments** render as a solid light color rather than 8 % alpha.
+- **Header text is 14 px** (spec says 11): the prototype's CSS pixels
+  read larger than real pixels on the 200 px-wide LCD, so the header row
+  is bumped for legibility (city-tag box 11 px).
 - **Time digits are 40 px** (spec says 44): DSEG7's real advance is 0.82 em,
   so 44 px digits plus the seconds column overflow the 180 px inner width
   on the actual pixel grid. 40 px is the largest size that fits.
@@ -52,9 +74,9 @@ stops at the time box edges, per the design.
 - **Battery / steps**: on-watch battery and Health services.
 - **Weather**: PebbleKit JS (`src/pkjs/index.js`) fetches from
   [Open-Meteo](https://open-meteo.com/) (no API key) using the phone's
-  location, every 30 minutes; last reading is persisted on the watch.
-  Conditions map to sun / cloud / rain / moon icons.
-- **City tag** is the `CITY_TAG` define in `src/c/main.c` (default `SF`).
+  location (or the configured coordinates), every 30 minutes; last
+  reading is persisted on the watch. Conditions map to sun / cloud /
+  rain / moon icons.
 
 ## Building
 
@@ -67,14 +89,14 @@ pebble sdk install latest # needs access to sdk.repebble.com
 pebble build
 ```
 
-The built `build/watchface-emery.pbw` (a copy is committed in `dist/`) can
-be sideloaded with `pebble install --phone <ip>` or through the Pebble
-mobile app. Note the current SDK's QEMU cannot emulate emery yet
-("Robert platform not yet ported"), so testing needs real hardware or a
-newer emulator.
+The built `build/pebble-lcd-worldtime.pbw` (a copy is committed in
+`dist/`) can be sideloaded with `pebble install --phone <ip>` or through
+the Pebble mobile app. SDK core ≥ 4.9 emulates emery in QEMU
+(`pebble install --emulator emery`).
 
 Toolchain compatibility flags for GCC 14 (builtin `__FILE_NAME__`,
-`strftime` prototype, `time_t` via `sys/types.h`) live in `wscript`.
+`strftime` prototype) live in `wscript`; `time_t` comes from the SDK's
+own `-Dtime_t=long`.
 
 ## Fonts
 

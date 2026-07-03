@@ -11,6 +11,7 @@
 // LCD stipple texture covers the face; it stops at the time box edges.
 
 #include <pebble.h>
+#include "settings.h"
 #include "theme.h"
 #include "world_map.h"
 
@@ -31,8 +32,6 @@
 #define FOOTER_TOP (MAP_TOP + MAP_H + 4)     // 172
 #define FOOTER_H (SCREEN_H - FOOTER_TOP - PAD) // 50
 
-#define CITY_TAG "SF"
-#define STEP_GOAL 10000
 #define BATTERY_LOW_PCT 20
 #define STIPPLE_SPACING 3
 
@@ -50,9 +49,10 @@ static Window *s_window;
 static Layer *s_bg_layer, *s_header_layer, *s_battery_layer, *s_time_layer,
              *s_map_layer, *s_footer_layer;
 
-static GFont s_font_dseg40, s_font_dseg18, s_font_tech18, s_font_tech11,
-             s_font_tech8;
+static GFont s_font_dseg40, s_font_dseg18, s_font_tech18, s_font_tech14,
+             s_font_tech11, s_font_tech8;
 static GBitmap *s_stipple;
+static GColor s_stipple_palette[2];
 
 static struct tm s_now;
 static int s_battery_pct = 100;
@@ -61,7 +61,38 @@ static int s_steps = 0;
 static int s_wx_temp = 68, s_wx_hi = 74, s_wx_lo = 55;
 static int s_wx_kind = WX_SUN;
 
-static const Theme *T = &THEMES[ACTIVE_THEME];
+static const Theme *T = &THEMES[THEME_POSITIVE];
+
+// Resolves the theme from settings: manual pick, or in auto mode the
+// day/night theme by local hour (handles windows that wrap midnight).
+static const Theme *active_theme(void) {
+  uint8_t id = g_settings.theme_manual;
+  if (g_settings.theme_mode == THEME_MODE_AUTO) {
+    int h = s_now.tm_hour;
+    int day = g_settings.day_start, night = g_settings.night_start;
+    bool is_day = day <= night ? (h >= day && h < night)
+                               : (h >= day || h < night);
+    id = is_day ? g_settings.theme_day : g_settings.theme_night;
+  }
+  if (id >= THEME_COUNT) id = 0;
+  return &THEMES[id];
+}
+
+// Swaps T if the resolved theme changed; refreshes the stipple palette
+// (the bitmap blits through it) and redraws everything.
+static void refresh_theme(void) {
+  const Theme *next = active_theme();
+  if (next == T) return;
+  T = next;
+  s_stipple_palette[1] = T->mute;
+  if (!s_bg_layer) return; // before window_load — nothing to redraw yet
+  layer_mark_dirty(s_bg_layer);
+  layer_mark_dirty(s_header_layer);
+  layer_mark_dirty(s_battery_layer);
+  layer_mark_dirty(s_time_layer);
+  layer_mark_dirty(s_map_layer);
+  layer_mark_dirty(s_footer_layer);
+}
 
 // ---------------------------------------------------------------- helpers
 
@@ -84,8 +115,8 @@ static void draw_text(GContext *ctx, const char *text, GFont font,
 // dot color) so the per-frame cost is one blit, not ~5k pixel calls.
 static void stipple_create(void) {
   // The palette must outlive the bitmap — the renderer reads it on every
-  // blit, so it cannot be a stack temporary.
-  static GColor s_stipple_palette[2];
+  // blit, so it cannot be a stack temporary. (It's also how theme swaps
+  // recolor the stipple without rebuilding the bitmap.)
   s_stipple_palette[0] = GColorClear;
   s_stipple_palette[1] = T->mute;
   s_stipple = gbitmap_create_blank_with_palette(
@@ -131,27 +162,30 @@ static void header_update_proc(Layer *layer, GContext *ctx) {
   const char *dow = DOW[s_now.tm_wday];
   const char *ampm = s_now.tm_hour >= 12 ? "PM" : "AM";
 
-  int text_y = (b.size.h - text_size("00", s_font_tech11).h) / 2 - 1;
+  // 14px main row (the design's 11px reads too small on the real LCD).
+  GSize row_sz = text_size("00", s_font_tech14);
+  int text_y = (b.size.h - row_sz.h) / 2 - 1;
 
   // Left: DOW (ink) + date (mute)
-  GSize dow_sz = text_size(dow, s_font_tech11);
-  draw_text(ctx, dow, s_font_tech11, T->ink,
-            GRect(0, text_y, dow_sz.w + 2, 14));
-  draw_text(ctx, date_buf, s_font_tech11, T->mute,
-            GRect(dow_sz.w + 5, text_y, 80, 14));
+  GSize dow_sz = text_size(dow, s_font_tech14);
+  draw_text(ctx, dow, s_font_tech14, T->ink,
+            GRect(0, text_y, dow_sz.w + 2, row_sz.h + 2));
+  draw_text(ctx, date_buf, s_font_tech14, T->mute,
+            GRect(dow_sz.w + 6, text_y, 90, row_sz.h + 2));
 
   // Right: AM/PM in accent at the far edge, city tag box to its left.
-  GSize ampm_sz = text_size(ampm, s_font_tech11);
+  GSize ampm_sz = text_size(ampm, s_font_tech14);
   int ampm_x = b.size.w - ampm_sz.w;
-  draw_text(ctx, ampm, s_font_tech11, T->accent,
-            GRect(ampm_x, text_y, ampm_sz.w + 1, 14));
+  draw_text(ctx, ampm, s_font_tech14, T->accent,
+            GRect(ampm_x, text_y, ampm_sz.w + 1, row_sz.h + 2));
 
-  GSize city_sz = text_size(CITY_TAG, s_font_tech8);
-  GRect city_box = GRect(ampm_x - city_sz.w - 12, text_y,
-                         city_sz.w + 7, city_sz.h + 4);
+  const char *city = g_settings.city_tag;
+  GSize city_sz = text_size(city, s_font_tech11);
+  GRect city_box = GRect(ampm_x - city_sz.w - 14, text_y,
+                         city_sz.w + 8, city_sz.h + 4);
   graphics_context_set_stroke_color(ctx, T->frame);
   graphics_draw_rect(ctx, city_box);
-  draw_text(ctx, CITY_TAG, s_font_tech8, T->ink,
+  draw_text(ctx, city, s_font_tech11, T->ink,
             GRect(city_box.origin.x + 4, city_box.origin.y + 1,
                   city_sz.w + 2, city_sz.h + 2));
 }
@@ -202,7 +236,8 @@ static void time_update_proc(Layer *layer, GContext *ctx) {
   GSize sec_label = text_size("SEC", s_font_tech8);
 
   int sec_col_w = sec2.w > sec_label.w ? sec2.w : sec_label.w;
-  int total_w = d2.w * 2 + colon.w + 4 + sec_col_w;
+  int total_w = d2.w * 2 + colon.w;
+  if (g_settings.show_seconds) total_w += 4 + sec_col_w;
   int x = (b.size.w - total_w) / 2;
   int y = (b.size.h - d2.h) / 2;
 
@@ -214,14 +249,17 @@ static void time_update_proc(Layer *layer, GContext *ctx) {
   draw_text(ctx, "88", s_font_dseg40, T->ghost,
             GRect(x + d2.w + colon.w, y, d2.w + 2, d2.h + 2));
 
-  // Lit digits. Colon blinks at the design's 0.5 Hz cycle.
+  // Lit digits. Colon blinks at the design's 0.5 Hz cycle (steady when
+  // seconds are off — the face only redraws once a minute then).
   draw_text(ctx, hh, s_font_dseg40, T->ink, GRect(x, y, d2.w + 2, d2.h + 2));
-  if (s_now.tm_sec % 2 == 0) {
+  if (!g_settings.show_seconds || s_now.tm_sec % 2 == 0) {
     draw_text(ctx, ":", s_font_dseg40, T->ink,
               GRect(x + d2.w, y, colon.w + 2, d2.h + 2));
   }
   draw_text(ctx, mm, s_font_dseg40, T->ink,
             GRect(x + d2.w + colon.w, y, d2.w + 2, d2.h + 2));
+
+  if (!g_settings.show_seconds) return;
 
   // Seconds column: SEC label over accent digits, bottom-aligned with HH:MM.
   int sec_x = x + d2.w * 2 + colon.w + 4;
@@ -241,7 +279,9 @@ static void map_update_proc(Layer *layer, GContext *ctx) {
   GRect b = layer_get_bounds(layer);
   time_t now = time(NULL);
   struct tm utc = *gmtime(&now);
-  world_map_draw(ctx, b, &utc, T->ink, T->mute, T->accent);
+  world_map_draw(ctx, b, &utc, T->ink, T->mute, T->accent, T->bg,
+                 g_settings.show_dot, g_settings.loc_lat_x100,
+                 g_settings.loc_lon_x100);
 }
 
 // ----------------------------------------------------------------- footer
@@ -289,79 +329,95 @@ static void draw_weather_icon(GContext *ctx, GPoint c, int kind) {
   }
 }
 
+// Each footer section draws centered inside `area` so it works in a half
+// column (both sections on) or the full width (only one section on).
+static void draw_weather_section(GContext *ctx, GRect area, int label_y,
+                                 int value_y) {
+  GSize w = text_size("WEATHER", s_font_tech8);
+  draw_text(ctx, "WEATHER", s_font_tech8, T->mute,
+            GRect(area.origin.x + (area.size.w - w.w) / 2, label_y,
+                  w.w + 2, w.h + 2));
+
+  char temp_buf[8];
+  snprintf(temp_buf, sizeof(temp_buf), "%d°", s_wx_temp);
+  GSize temp_sz = text_size(temp_buf, s_font_tech18);
+  int group_w = 18 + 4 + temp_sz.w;
+  int gx = area.origin.x + (area.size.w - group_w) / 2;
+  draw_weather_icon(ctx, GPoint(gx + 9, value_y + temp_sz.h / 2), s_wx_kind);
+  draw_text(ctx, temp_buf, s_font_tech18, T->ink,
+            GRect(gx + 22, value_y, temp_sz.w + 2, temp_sz.h + 2));
+
+  char hilo_buf[16];
+  snprintf(hilo_buf, sizeof(hilo_buf), "H%d°  L%d°", s_wx_hi, s_wx_lo);
+  GSize hilo_sz = text_size(hilo_buf, s_font_tech8);
+  int hy = value_y + temp_sz.h + 3;
+  int hx = area.origin.x + (area.size.w - hilo_sz.w) / 2;
+  // "H" + hi in accent, rest in mute — draw in two passes.
+  char hi_part[8];
+  snprintf(hi_part, sizeof(hi_part), "H%d°", s_wx_hi);
+  GSize hi_sz = text_size(hi_part, s_font_tech8);
+  draw_text(ctx, hi_part, s_font_tech8, T->accent,
+            GRect(hx, hy, hi_sz.w + 2, hi_sz.h + 2));
+  char lo_part[8];
+  snprintf(lo_part, sizeof(lo_part), "L%d°", s_wx_lo);
+  draw_text(ctx, lo_part, s_font_tech8, T->mute,
+            GRect(hx + hi_sz.w + 6, hy, hilo_sz.w, hi_sz.h + 2));
+}
+
+static void draw_steps_section(GContext *ctx, GRect area, int label_y,
+                               int value_y) {
+  GSize w = text_size("STEPS", s_font_tech8);
+  draw_text(ctx, "STEPS", s_font_tech8, T->mute,
+            GRect(area.origin.x + (area.size.w - w.w) / 2, label_y,
+                  w.w + 2, w.h + 2));
+
+  char steps_buf[12];
+  if (s_steps >= 1000) {
+    snprintf(steps_buf, sizeof(steps_buf), "%d,%03d", s_steps / 1000,
+             s_steps % 1000);
+  } else {
+    snprintf(steps_buf, sizeof(steps_buf), "%d", s_steps);
+  }
+  GSize st_sz = text_size(steps_buf, s_font_tech18);
+  draw_text(ctx, steps_buf, s_font_tech18, T->ink,
+            GRect(area.origin.x + (area.size.w - st_sz.w) / 2, value_y,
+                  st_sz.w + 2, st_sz.h + 2));
+
+  // Progress bar, 85% of the section width (capped so a full-width
+  // solo section keeps the design's half-width proportions), 4px tall.
+  int bar_w = area.size.w * 85 / 100;
+  if (bar_w > 90) bar_w = 90;
+  int bx = area.origin.x + (area.size.w - bar_w) / 2;
+  int by = value_y + st_sz.h + 4;
+  graphics_context_set_stroke_color(ctx, T->frame);
+  graphics_draw_rect(ctx, GRect(bx, by, bar_w, 4));
+  int goal = g_settings.step_goal > 0 ? g_settings.step_goal : 1;
+  int fill_w = s_steps >= goal ? bar_w - 2 : (bar_w - 2) * s_steps / goal;
+  graphics_context_set_fill_color(ctx, T->accent);
+  graphics_fill_rect(ctx, GRect(bx + 1, by + 1, fill_w, 2), 0, GCornerNone);
+}
+
 static void footer_update_proc(Layer *layer, GContext *ctx) {
   GRect b = layer_get_bounds(layer);
-  int half = b.size.w / 2;
-
-  // Center divider
-  graphics_context_set_stroke_color(ctx, T->mute);
-  graphics_draw_line(ctx, GPoint(half, 2), GPoint(half, b.size.h - 2));
+  bool wx = g_settings.show_weather, st = g_settings.show_steps;
+  if (!wx && !st) return;
 
   GSize label_sz = text_size("WEATHER", s_font_tech8);
   int label_y = 2;
   int value_y = label_y + label_sz.h + 4;
+  int half = b.size.w / 2;
 
-  // --- WEATHER (left half) ---
-  {
-    GSize w = label_sz;
-    draw_text(ctx, "WEATHER", s_font_tech8, T->mute,
-              GRect((half - w.w) / 2, label_y, w.w + 2, w.h + 2));
-
-    char temp_buf[8];
-    snprintf(temp_buf, sizeof(temp_buf), "%d°", s_wx_temp);
-    GSize temp_sz = text_size(temp_buf, s_font_tech18);
-    int group_w = 18 + 4 + temp_sz.w;
-    int gx = (half - group_w) / 2;
-    draw_weather_icon(ctx, GPoint(gx + 9, value_y + temp_sz.h / 2), s_wx_kind);
-    draw_text(ctx, temp_buf, s_font_tech18, T->ink,
-              GRect(gx + 22, value_y, temp_sz.w + 2, temp_sz.h + 2));
-
-    char hilo_buf[16];
-    snprintf(hilo_buf, sizeof(hilo_buf), "H%d°  L%d°", s_wx_hi, s_wx_lo);
-    GSize hilo_sz = text_size(hilo_buf, s_font_tech8);
-    int hy = value_y + temp_sz.h + 3;
-    int hx = (half - hilo_sz.w) / 2;
-    // "H" + hi in accent, rest in mute — draw in two passes.
-    char hi_part[8];
-    snprintf(hi_part, sizeof(hi_part), "H%d°", s_wx_hi);
-    GSize hi_sz = text_size(hi_part, s_font_tech8);
-    draw_text(ctx, hi_part, s_font_tech8, T->accent,
-              GRect(hx, hy, hi_sz.w + 2, hi_sz.h + 2));
-    char lo_part[8];
-    snprintf(lo_part, sizeof(lo_part), "L%d°", s_wx_lo);
-    draw_text(ctx, lo_part, s_font_tech8, T->mute,
-              GRect(hx + hi_sz.w + 6, hy, hilo_sz.w, hi_sz.h + 2));
-  }
-
-  // --- STEPS (right half) ---
-  {
-    GSize w = text_size("STEPS", s_font_tech8);
-    draw_text(ctx, "STEPS", s_font_tech8, T->mute,
-              GRect(half + (half - w.w) / 2, label_y, w.w + 2, w.h + 2));
-
-    char steps_buf[12];
-    if (s_steps >= 1000) {
-      snprintf(steps_buf, sizeof(steps_buf), "%d,%03d", s_steps / 1000,
-               s_steps % 1000);
-    } else {
-      snprintf(steps_buf, sizeof(steps_buf), "%d", s_steps);
-    }
-    GSize st_sz = text_size(steps_buf, s_font_tech18);
-    draw_text(ctx, steps_buf, s_font_tech18, T->ink,
-              GRect(half + (half - st_sz.w) / 2, value_y, st_sz.w + 2,
-                    st_sz.h + 2));
-
-    // Progress bar, 85% of the half-width, 4px tall.
-    int bar_w = half * 85 / 100;
-    int bx = half + (half - bar_w) / 2;
-    int by = value_y + st_sz.h + 4;
-    graphics_context_set_stroke_color(ctx, T->frame);
-    graphics_draw_rect(ctx, GRect(bx, by, bar_w, 4));
-    int fill_w = s_steps >= STEP_GOAL
-                     ? bar_w - 2
-                     : (bar_w - 2) * s_steps / STEP_GOAL;
-    graphics_context_set_fill_color(ctx, T->accent);
-    graphics_fill_rect(ctx, GRect(bx + 1, by + 1, fill_w, 2), 0, GCornerNone);
+  if (wx && st) {
+    graphics_context_set_stroke_color(ctx, T->mute);
+    graphics_draw_line(ctx, GPoint(half, 2), GPoint(half, b.size.h - 2));
+    draw_weather_section(ctx, GRect(0, 0, half, b.size.h), label_y, value_y);
+    draw_steps_section(ctx, GRect(half, 0, half, b.size.h), label_y, value_y);
+  } else if (wx) {
+    draw_weather_section(ctx, GRect(0, 0, b.size.w, b.size.h), label_y,
+                         value_y);
+  } else {
+    draw_steps_section(ctx, GRect(0, 0, b.size.w, b.size.h), label_y,
+                       value_y);
   }
 }
 
@@ -373,7 +429,15 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   if (units_changed & MINUTE_UNIT) {
     layer_mark_dirty(s_header_layer);
     layer_mark_dirty(s_map_layer);
+    refresh_theme(); // auto mode may cross a day/night boundary
   }
+}
+
+// Seconds display needs SECOND_UNIT; without it a once-a-minute wake
+// is enough (and much kinder to the battery).
+static void update_tick_subscription(void) {
+  tick_timer_service_subscribe(
+      g_settings.show_seconds ? SECOND_UNIT : MINUTE_UNIT, tick_handler);
 }
 
 static void battery_handler(BatteryChargeState state) {
@@ -403,15 +467,31 @@ static void health_handler(HealthEventType event, void *context) {
 
 static void inbox_received(DictionaryIterator *iter, void *context) {
   Tuple *t;
-  if ((t = dict_find(iter, MESSAGE_KEY_TEMPERATURE))) s_wx_temp = t->value->int32;
+  bool wx_seen = false;
+  if ((t = dict_find(iter, MESSAGE_KEY_TEMPERATURE))) {
+    s_wx_temp = t->value->int32;
+    wx_seen = true;
+  }
   if ((t = dict_find(iter, MESSAGE_KEY_TEMP_HI))) s_wx_hi = t->value->int32;
   if ((t = dict_find(iter, MESSAGE_KEY_TEMP_LO))) s_wx_lo = t->value->int32;
   if ((t = dict_find(iter, MESSAGE_KEY_CONDITION))) s_wx_kind = t->value->int32;
-  persist_write_int(PERSIST_WX_TEMP, s_wx_temp);
-  persist_write_int(PERSIST_WX_HI, s_wx_hi);
-  persist_write_int(PERSIST_WX_LO, s_wx_lo);
-  persist_write_int(PERSIST_WX_KIND, s_wx_kind);
-  layer_mark_dirty(s_footer_layer);
+  if (wx_seen) {
+    persist_write_int(PERSIST_WX_TEMP, s_wx_temp);
+    persist_write_int(PERSIST_WX_HI, s_wx_hi);
+    persist_write_int(PERSIST_WX_LO, s_wx_lo);
+    persist_write_int(PERSIST_WX_KIND, s_wx_kind);
+    layer_mark_dirty(s_footer_layer);
+  }
+
+  // Settings pushed from the Clay config page.
+  if (settings_apply_message(iter)) {
+    update_tick_subscription();
+    refresh_theme();
+    layer_mark_dirty(s_header_layer);
+    layer_mark_dirty(s_time_layer);
+    layer_mark_dirty(s_map_layer);
+    layer_mark_dirty(s_footer_layer);
+  }
 }
 
 // ----------------------------------------------------------------- window
@@ -425,6 +505,8 @@ static void window_load(Window *window) {
       resource_get_handle(RESOURCE_ID_FONT_LCD_18));
   s_font_tech18 = fonts_load_custom_font(
       resource_get_handle(RESOURCE_ID_FONT_TECH_18));
+  s_font_tech14 = fonts_load_custom_font(
+      resource_get_handle(RESOURCE_ID_FONT_TECH_14));
   s_font_tech11 = fonts_load_custom_font(
       resource_get_handle(RESOURCE_ID_FONT_TECH_11));
   s_font_tech8 = fonts_load_custom_font(
@@ -467,6 +549,7 @@ static void window_unload(Window *window) {
   fonts_unload_custom_font(s_font_dseg40);
   fonts_unload_custom_font(s_font_dseg18);
   fonts_unload_custom_font(s_font_tech18);
+  fonts_unload_custom_font(s_font_tech14);
   fonts_unload_custom_font(s_font_tech11);
   fonts_unload_custom_font(s_font_tech8);
   if (s_stipple) gbitmap_destroy(s_stipple);
@@ -475,6 +558,9 @@ static void window_unload(Window *window) {
 static void init(void) {
   time_t now = time(NULL);
   s_now = *localtime(&now);
+
+  settings_load();
+  refresh_theme();
 
   if (persist_exists(PERSIST_WX_TEMP)) {
     s_wx_temp = persist_read_int(PERSIST_WX_TEMP);
@@ -490,7 +576,7 @@ static void init(void) {
   });
   window_stack_push(s_window, true);
 
-  tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
+  update_tick_subscription();
 
   battery_state_service_subscribe(battery_handler);
   s_battery_pct = battery_state_service_peek().charge_percent;
@@ -501,7 +587,8 @@ static void init(void) {
 #endif
 
   app_message_register_inbox_received(inbox_received);
-  app_message_open(128, 32);
+  // Inbox must fit a full Clay settings dictionary, not just weather.
+  app_message_open(512, 32);
 }
 
 static void deinit(void) {

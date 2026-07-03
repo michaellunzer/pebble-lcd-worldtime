@@ -1,10 +1,12 @@
 {
   "name": "lcd-worldtime",
   "author": "Michael Lunzer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "keywords": ["pebble-app"],
-  "dependencies": {},
+  "dependencies": {
+    "pebble-clay": "^1.0.4"
+  },
   "pebble": {
     "displayName": "LCD Worldtime",
     "uuid": "8e1b2f4a-7c3d-4e5f-9a6b-1d2c3e4f5a6b",
@@ -18,7 +20,23 @@
       "TEMPERATURE",
       "TEMP_HI",
       "TEMP_LO",
-      "CONDITION"
+      "CONDITION",
+      "CITY_TAG",
+      "LOC_LAT",
+      "LOC_LON",
+      "SHOW_DOT",
+      "WX_GPS",
+      "THEME_MODE",
+      "THEME_SEL",
+      "THEME_DAY",
+      "THEME_NIGHT",
+      "DAY_START",
+      "NIGHT_START",
+      "SHOW_SECONDS",
+      "SHOW_WEATHER",
+      "SHOW_STEPS",
+      "USE_CELSIUS",
+      "STEP_GOAL"
     ],
     "resources": {
       "media": [
@@ -39,6 +57,12 @@
           "name": "FONT_TECH_18",
           "file": "fonts/ShareTechMono-Regular.ttf",
           "characterRegex": "[0-9,°]"
+        },
+        {
+          "type": "font",
+          "name": "FONT_TECH_14",
+          "file": "fonts/ShareTechMono-Regular.ttf",
+          "characterRegex": "[A-Z0-9 ]"
         },
         {
           "type": "font",

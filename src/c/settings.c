@@ -1,0 +1,138 @@
+#include "settings.h"
+#include "theme.h"
+
+#define PERSIST_SETTINGS 100
+
+Settings g_settings;
+
+static void settings_defaults(void) {
+  g_settings = (Settings){
+    .city_tag = "SF",
+    .loc_lat_x100 = 3777,    // San Francisco
+    .loc_lon_x100 = -12242,
+    .show_dot = true,
+    .wx_gps = true,
+    .theme_mode = THEME_MODE_AUTO,
+    .theme_manual = THEME_POSITIVE,
+    .theme_day = THEME_POSITIVE,
+    .theme_night = THEME_NEGATIVE,
+    .day_start = 7,
+    .night_start = 20,
+    .show_seconds = true,
+    .show_weather = true,
+    .show_steps = true,
+    .use_celsius = false,
+    .step_goal = 10000,
+  };
+}
+
+static void settings_sanitize(void) {
+  g_settings.city_tag[sizeof(g_settings.city_tag) - 1] = '\0';
+  if (g_settings.city_tag[0] == '\0') strcpy(g_settings.city_tag, "SF");
+  if (g_settings.loc_lat_x100 < -9000) g_settings.loc_lat_x100 = -9000;
+  if (g_settings.loc_lat_x100 > 9000) g_settings.loc_lat_x100 = 9000;
+  if (g_settings.loc_lon_x100 < -18000) g_settings.loc_lon_x100 = -18000;
+  if (g_settings.loc_lon_x100 > 18000) g_settings.loc_lon_x100 = 18000;
+  if (g_settings.theme_mode > THEME_MODE_AUTO)
+    g_settings.theme_mode = THEME_MODE_MANUAL;
+  if (g_settings.theme_manual >= THEME_COUNT) g_settings.theme_manual = 0;
+  if (g_settings.theme_day >= THEME_COUNT) g_settings.theme_day = 0;
+  if (g_settings.theme_night >= THEME_COUNT) g_settings.theme_night = 0;
+  g_settings.day_start %= 24;
+  g_settings.night_start %= 24;
+  if (g_settings.step_goal < 100) g_settings.step_goal = 10000;
+}
+
+void settings_load(void) {
+  settings_defaults();
+  if (persist_exists(PERSIST_SETTINGS)) {
+    Settings stored;
+    int read = persist_read_data(PERSIST_SETTINGS, &stored, sizeof(stored));
+    // A size mismatch means the struct changed shape across an app
+    // update — fall back to defaults rather than reading garbage.
+    if (read == (int)sizeof(stored)) g_settings = stored;
+  }
+  settings_sanitize();
+}
+
+void settings_save(void) {
+  persist_write_data(PERSIST_SETTINGS, &g_settings, sizeof(g_settings));
+}
+
+bool settings_apply_message(DictionaryIterator *iter) {
+  bool seen = false;
+  Tuple *t;
+
+  if ((t = dict_find(iter, MESSAGE_KEY_CITY_TAG))) {
+    strncpy(g_settings.city_tag, t->value->cstring,
+            sizeof(g_settings.city_tag) - 1);
+    g_settings.city_tag[sizeof(g_settings.city_tag) - 1] = '\0';
+    seen = true;
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_LOC_LAT))) {
+    g_settings.loc_lat_x100 = t->value->int32;
+    seen = true;
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_LOC_LON))) {
+    g_settings.loc_lon_x100 = t->value->int32;
+    seen = true;
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_SHOW_DOT))) {
+    g_settings.show_dot = t->value->int32 != 0;
+    seen = true;
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_WX_GPS))) {
+    g_settings.wx_gps = t->value->int32 != 0;
+    seen = true;
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_THEME_MODE))) {
+    g_settings.theme_mode = t->value->int32;
+    seen = true;
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_THEME_SEL))) {
+    g_settings.theme_manual = t->value->int32;
+    seen = true;
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_THEME_DAY))) {
+    g_settings.theme_day = t->value->int32;
+    seen = true;
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_THEME_NIGHT))) {
+    g_settings.theme_night = t->value->int32;
+    seen = true;
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_DAY_START))) {
+    g_settings.day_start = t->value->int32;
+    seen = true;
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_NIGHT_START))) {
+    g_settings.night_start = t->value->int32;
+    seen = true;
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_SHOW_SECONDS))) {
+    g_settings.show_seconds = t->value->int32 != 0;
+    seen = true;
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_SHOW_WEATHER))) {
+    g_settings.show_weather = t->value->int32 != 0;
+    seen = true;
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_SHOW_STEPS))) {
+    g_settings.show_steps = t->value->int32 != 0;
+    seen = true;
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_USE_CELSIUS))) {
+    g_settings.use_celsius = t->value->int32 != 0;
+    seen = true;
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_STEP_GOAL))) {
+    g_settings.step_goal = t->value->int32;
+    seen = true;
+  }
+
+  if (seen) {
+    settings_sanitize();
+    settings_save();
+  }
+  return seen;
+}

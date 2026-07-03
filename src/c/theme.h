@@ -67,5 +67,5 @@ static const Theme THEMES[THEME_COUNT] = {
   },
 };
 
-// Active theme for the build. Swap to any ThemeId above.
-#define ACTIVE_THEME THEME_POSITIVE
+// The active theme is chosen at runtime from user settings — see
+// active_theme() in main.c (manual pick, or day/night auto switching).

@@ -38,8 +38,23 @@ static inline int32_t deg_to_angle(int32_t deg_x100) {
   return (int32_t)((int64_t)deg_x100 * TRIG_MAX_ANGLE / 36000);
 }
 
+// Piecewise-linear latitude -> pixel y over the map's row latitudes.
+static int lat_to_y(int lat_deg, int16_t y0, int16_t h) {
+  if (lat_deg >= WORLD_LATS[0]) return y0;
+  for (int i = 0; i < MAP_ROWS - 1; i++) {
+    if (lat_deg <= WORLD_LATS[i] && lat_deg >= WORLD_LATS[i + 1]) {
+      int span = WORLD_LATS[i] - WORLD_LATS[i + 1];
+      int frac_num = WORLD_LATS[i] - lat_deg;
+      return y0 + (i * h + frac_num * h / span) / MAP_ROWS;
+    }
+  }
+  return y0 + h - 1;
+}
+
 void world_map_draw(GContext *ctx, GRect bounds, const struct tm *utc,
-                    GColor ink, GColor mute, GColor accent) {
+                    GColor ink, GColor mute, GColor accent, GColor bg,
+                    bool show_home, int32_t home_lat_x100,
+                    int32_t home_lon_x100) {
   const int16_t w = bounds.size.w;
   const int16_t h = bounds.size.h;
   const int16_t x0 = bounds.origin.x;
@@ -104,22 +119,23 @@ void world_map_draw(GContext *ctx, GRect bounds, const struct tm *utc,
   // --- Subsolar sun marker: accent disc + ink crosshair ---
   // Column from longitude, row from declination (linear interp over rows).
   int32_t sun_x = x0 + (int32_t)(((int64_t)(sublon_x100 + 18000) * w) / 36000);
-  int32_t decl_deg = decl_x100 / 100;
-  int sun_y = y0 + h / 2;
-  for (int i = 0; i < MAP_ROWS - 1; i++) {
-    if (decl_deg <= WORLD_LATS[i] && decl_deg >= WORLD_LATS[i + 1]) {
-      int span = WORLD_LATS[i] - WORLD_LATS[i + 1];
-      int frac_num = WORLD_LATS[i] - decl_deg;
-      sun_y = y0 + (i * h + frac_num * h / span) / MAP_ROWS;
-      break;
-    }
-  }
+  int sun_y = lat_to_y(decl_x100 / 100, y0, h);
 
   graphics_context_set_fill_color(ctx, accent);
   graphics_fill_circle(ctx, GPoint(sun_x, sun_y), 3);
   graphics_context_set_stroke_color(ctx, ink);
   graphics_draw_line(ctx, GPoint(sun_x - 5, sun_y), GPoint(sun_x + 5, sun_y));
   graphics_draw_line(ctx, GPoint(sun_x, sun_y - 5), GPoint(sun_x, sun_y + 5));
+
+  // --- Home-location dot: bg ring under an accent disc ---
+  if (show_home) {
+    int32_t hx = x0 + (int32_t)(((int64_t)(home_lon_x100 + 18000) * w) / 36000);
+    int hy = lat_to_y(home_lat_x100 / 100, y0, h);
+    graphics_context_set_fill_color(ctx, bg);
+    graphics_fill_circle(ctx, GPoint(hx, hy), 3);
+    graphics_context_set_fill_color(ctx, accent);
+    graphics_fill_circle(ctx, GPoint(hx, hy), 2);
+  }
 
   // Frame
   graphics_context_set_stroke_color(ctx, mute);

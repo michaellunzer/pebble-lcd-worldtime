@@ -29,14 +29,14 @@ def build(ctx):
         #  - GCC >= 11 has __FILE_NAME__ as a builtin; the SDK also -D's it.
         #  - pebble.h declares strftime as returning int; newer GCC builtins
         #    expect size_t.
-        #  - The SDK blocks newlib's <time.h> (-D_TIME_H_) but pebble.h still
-        #    expects time_t, which modern newlib defines in <sys/types.h>.
+        #  - time_t comes from the SDK's own -Dtime_t=long (since ~4.9);
+        #    force-including <sys/types.h> here would make newlib's
+        #    `typedef ... time_t;` expand into a syntax error.
         cc_ver = tuple(int(x) for x in (ctx.env.CC_VERSION or ('0',)))
         if cc_ver >= (11,):
             ctx.env.append_value('CFLAGS', [
                 '-Wno-builtin-macro-redefined',
                 '-Wno-builtin-declaration-mismatch',
-                '-include', 'sys/types.h',
             ])
         ctx.set_group(ctx.env.PLATFORM_NAME)
         app_elf = '{}/pebble-app.elf'.format(ctx.env.BUILD_DIR)
