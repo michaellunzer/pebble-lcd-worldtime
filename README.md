@@ -39,6 +39,12 @@ stops at the time box edges, per the design.
   tones map to solid Light/DarkGray. All four themes are in
   `src/c/theme.h` — change `ACTIVE_THEME` to switch.
 - **Ghost segments** render as a solid light color rather than 8 % alpha.
+- **Time digits are 40 px** (spec says 44): DSEG7's real advance is 0.82 em,
+  so 44 px digits plus the seconds column overflow the 180 px inner width
+  on the actual pixel grid. 40 px is the largest size that fits.
+- Font resource names must not contain digits before the size — the SDK's
+  fontgen takes the *first* number in the name as the pixel height
+  (hence `FONT_LCD_40`, not `FONT_DSEG7_40`).
 - The colon blinks on a 1 s on / 1 s off cycle (the spec's 0.5 Hz).
 
 ## Data sources
@@ -73,7 +79,7 @@ Toolchain compatibility flags for GCC 14 (builtin `__FILE_NAME__`,
 ## Fonts
 
 - [DSEG7 Classic Bold](https://github.com/keshikan/DSEG) v0.46 — digits
-  (44 px time, 18 px seconds). SIL OFL 1.1, see
+  (40 px time, 18 px seconds). SIL OFL 1.1, see
   `resources/fonts/DSEG-LICENSE.txt`.
 - [Share Tech Mono](https://fonts.google.com/specimen/Share+Tech+Mono) —
   labels (18/11/8 px). SIL OFL 1.1, see

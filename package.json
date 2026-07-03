@@ -24,13 +24,13 @@
       "media": [
         {
           "type": "font",
-          "name": "FONT_DSEG7_44",
+          "name": "FONT_LCD_40",
           "file": "fonts/DSEG7Classic-Bold.ttf",
           "characterRegex": "[0-9:]"
         },
         {
           "type": "font",
-          "name": "FONT_DSEG7_18",
+          "name": "FONT_LCD_18",
           "file": "fonts/DSEG7Classic-Bold.ttf",
           "characterRegex": "[0-9]"
         },
