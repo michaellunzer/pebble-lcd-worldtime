@@ -1,0 +1,58 @@
+{
+  "name": "lcd-worldtime",
+  "author": "Michael Lunzer",
+  "version": "1.0.0",
+  "private": true,
+  "keywords": ["pebble-app"],
+  "dependencies": {},
+  "pebble": {
+    "displayName": "LCD Worldtime",
+    "uuid": "8e1b2f4a-7c3d-4e5f-9a6b-1d2c3e4f5a6b",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": ["emery"],
+    "watchapp": {
+      "watchface": true
+    },
+    "messageKeys": [
+      "TEMPERATURE",
+      "TEMP_HI",
+      "TEMP_LO",
+      "CONDITION"
+    ],
+    "resources": {
+      "media": [
+        {
+          "type": "font",
+          "name": "FONT_DSEG7_44",
+          "file": "fonts/DSEG7Classic-Bold.ttf",
+          "characterRegex": "[0-9:]"
+        },
+        {
+          "type": "font",
+          "name": "FONT_DSEG7_18",
+          "file": "fonts/DSEG7Classic-Bold.ttf",
+          "characterRegex": "[0-9]"
+        },
+        {
+          "type": "font",
+          "name": "FONT_TECH_18",
+          "file": "fonts/ShareTechMono-Regular.ttf",
+          "characterRegex": "[0-9,°]"
+        },
+        {
+          "type": "font",
+          "name": "FONT_TECH_11",
+          "file": "fonts/ShareTechMono-Regular.ttf",
+          "characterRegex": "[A-Z0-9 ]"
+        },
+        {
+          "type": "font",
+          "name": "FONT_TECH_8",
+          "file": "fonts/ShareTechMono-Regular.ttf",
+          "characterRegex": "[A-Z0-9° ]"
+        }
+      ]
+    }
+  }
+}
