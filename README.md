@@ -25,11 +25,11 @@ of truth for the layout.
 | Battery | 32 | 6 | 10 blocks, lit or empty (one per 10 %), accent ≤ 20 % |
 | Time | 42 | hugs digits | framed box (full 188px width), DSEG7 42px digits + 22px seconds — or 50px digits alone when seconds are off/moved to a slot |
 | Map | below time | remainder | 60 × 19 grid from Natural Earth 110m coastlines — green land / blue sea in day/night shades, yellow sun marker, accent home dot |
-| Footer | 172 | 50 | two configurable slots: weather (icon + temp) · steps · heart rate · seconds · empty |
+| Footer | 172 | 50 | two unlabeled slots: weather (icon + temp) · steps · heart rate · seconds · empty |
 
-Screen padding 6 px; content inset to x = 10, width 180. The LCD stipple
-texture (prebuilt 1-bit bitmap, one blit per frame) covers the face and
-stops at the time box edges, per the design.
+Screen padding 6 px; content inset to x = 10, width 180. The face is a
+clean solid substrate (the design's stipple texture read as noise on
+the physical panel and was dropped).
 
 ## Settings
 

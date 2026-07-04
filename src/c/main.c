@@ -8,7 +8,8 @@
 //   map      46px  60x19 dot-matrix world, live day/night terminator
 //   footer  ~50px  WEATHER (icon + °F + hi/lo) · STEPS (count + bar)
 //
-// LCD stipple texture covers the face; it stops at the time box edges.
+// The face is a clean solid substrate; the only texture is the hatch
+// over unlit 7-segment ghosts.
 
 #include <pebble.h>
 #include "settings.h"
@@ -32,7 +33,6 @@
 // map absorbs whatever vertical space is left — see apply_layout().
 
 #define BATTERY_LOW_PCT 20
-#define STIPPLE_SPACING 3
 
 // Weather condition codes shared with src/pkjs/index.js.
 enum WeatherKind { WX_SUN = 0, WX_CLOUD = 1, WX_RAIN = 2, WX_MOON = 3 };
@@ -49,8 +49,6 @@ static Layer *s_bg_layer, *s_header_layer, *s_battery_layer, *s_time_layer,
 static GFont s_font_dseg50, s_font_dseg42, s_font_dseg28, s_font_dseg22,
              s_font_tech24, s_font_tech16, s_font_tech14, s_font_tech11,
              s_font_tech8;
-static GBitmap *s_stipple;
-static GColor s_stipple_palette[2];
 static GBitmap *s_hatch;
 static GColor s_hatch_palette[2];
 
@@ -93,13 +91,12 @@ static const Theme *active_theme(void) {
   return &THEMES[id];
 }
 
-// Swaps T if the resolved theme changed; refreshes the stipple palette
+// Swaps T if the resolved theme changed; refreshes the hatch palette
 // (the bitmap blits through it) and redraws everything.
 static void refresh_theme(void) {
   const Theme *next = active_theme();
   if (next == T) return;
   T = next;
-  s_stipple_palette[1] = T->stipple;
   s_hatch_palette[1] = T->bg;
   if (!s_bg_layer) return; // before window_load — nothing to redraw yet
   layer_mark_dirty(s_bg_layer);
@@ -136,28 +133,6 @@ static void draw_text_bold(GContext *ctx, const char *text, GFont font,
 
 // ------------------------------------------------------------- background
 
-// The stipple is prebuilt as a 1-bit palettized bitmap (transparent +
-// dot color) so the per-frame cost is one blit, not ~5k pixel calls.
-static void stipple_create(void) {
-  // The palette must outlive the bitmap — the renderer reads it on every
-  // blit, so it cannot be a stack temporary. (It's also how theme swaps
-  // recolor the stipple without rebuilding the bitmap.)
-  s_stipple_palette[0] = GColorClear;
-  s_stipple_palette[1] = T->stipple;
-  s_stipple = gbitmap_create_blank_with_palette(
-      GSize(SCREEN_W, SCREEN_H), GBitmapFormat1BitPalette,
-      s_stipple_palette, false);
-  if (!s_stipple) return;
-  uint8_t *data = gbitmap_get_data(s_stipple);
-  uint16_t stride = gbitmap_get_bytes_per_row(s_stipple);
-  for (int y = 0; y < SCREEN_H; y += STIPPLE_SPACING) {
-    uint8_t *row = data + y * stride;
-    for (int x = 0; x < SCREEN_W; x += STIPPLE_SPACING) {
-      row[x / 8] |= 0x80 >> (x % 8);
-    }
-  }
-}
-
 // Unlit 7-segment "ghosts" get a checkerboard of bg-colored dots blitted
 // over them — halves their intensity with an LCD-like hatch texture.
 // One 8x8 tile, tiled across the target rect by the renderer.
@@ -187,12 +162,7 @@ static void bg_update_proc(Layer *layer, GContext *ctx) {
   graphics_context_set_fill_color(ctx, T->bg);
   graphics_fill_rect(ctx, bounds, 0, GCornerNone);
 
-  if (s_stipple) {
-    graphics_context_set_compositing_mode(ctx, GCompOpSet);
-    graphics_draw_bitmap_in_rect(ctx, s_stipple, bounds);
-  }
-
-  // Outer LCD frame line (inset 3, reads at ~50% via the mute color).
+  // Outer LCD frame line (inset 3).
   graphics_context_set_stroke_color(ctx, T->mute);
   graphics_draw_rect(ctx, grect_inset(bounds, GEdgeInsets(3)));
 }
@@ -269,7 +239,7 @@ static void battery_update_proc(Layer *layer, GContext *ctx) {
 static void time_update_proc(Layer *layer, GContext *ctx) {
   GRect b = layer_get_bounds(layer);
 
-  // Framed box with a solid background — the stipple stops here.
+  // Framed box with a solid background.
   graphics_context_set_fill_color(ctx, T->bg);
   graphics_fill_rect(ctx, b, 0, GCornerNone);
   graphics_context_set_stroke_color(ctx, T->frame);
@@ -391,35 +361,21 @@ static void draw_weather_icon(GContext *ctx, GPoint c, int kind) {
   }
 }
 
-// Each footer section draws centered inside `area` so it works in a half
-// column (both sections on) or the full width (only one section on).
-static void draw_weather_section(GContext *ctx, GRect area, int label_y,
-                                 int value_y) {
-  GSize w = text_size("WEATHER", s_font_tech11);
-  draw_text(ctx, "WEATHER", s_font_tech11, T->mute,
-            GRect(area.origin.x + (area.size.w - w.w) / 2, label_y,
-                  w.w + 2, w.h + 2));
-
-  // Icon + temperature carry the whole story, centered in the space
-  // below the label.
+// Each footer section is unlabeled — just the information, centered in
+// `area` — so it works in a half column (both boxes on) or full width.
+static void draw_weather_section(GContext *ctx, GRect area) {
   char temp_buf[16];
   snprintf(temp_buf, sizeof(temp_buf), "%d°", s_wx_temp);
   GSize temp_sz = text_size(temp_buf, s_font_tech24);
   int group_w = 18 + 6 + temp_sz.w;
   int gx = area.origin.x + (area.size.w - group_w) / 2;
-  int gy = value_y + (area.size.h - value_y - temp_sz.h) / 2;
+  int gy = area.origin.y + (area.size.h - temp_sz.h) / 2;
   draw_weather_icon(ctx, GPoint(gx + 9, gy + temp_sz.h / 2), s_wx_kind);
   draw_text(ctx, temp_buf, s_font_tech24, T->ink,
             GRect(gx + 24, gy, temp_sz.w + 2, temp_sz.h + 2));
 }
 
-static void draw_steps_section(GContext *ctx, GRect area, int label_y,
-                               int value_y) {
-  GSize w = text_size("STEPS", s_font_tech11);
-  draw_text(ctx, "STEPS", s_font_tech11, T->mute,
-            GRect(area.origin.x + (area.size.w - w.w) / 2, label_y,
-                  w.w + 2, w.h + 2));
-
+static void draw_steps_section(GContext *ctx, GRect area) {
   char steps_buf[16];
   if (s_steps >= 1000) {
     snprintf(steps_buf, sizeof(steps_buf), "%d,%03d", s_steps / 1000,
@@ -428,8 +384,9 @@ static void draw_steps_section(GContext *ctx, GRect area, int label_y,
     snprintf(steps_buf, sizeof(steps_buf), "%d", s_steps);
   }
   GSize st_sz = text_size(steps_buf, s_font_tech24);
+  int sy = area.origin.y + (area.size.h - st_sz.h - 6) / 2;
   draw_text(ctx, steps_buf, s_font_tech24, T->ink,
-            GRect(area.origin.x + (area.size.w - st_sz.w) / 2, value_y,
+            GRect(area.origin.x + (area.size.w - st_sz.w) / 2, sy,
                   st_sz.w + 2, st_sz.h + 2));
 
   // Progress bar, 85% of the section width (capped so a full-width
@@ -437,7 +394,7 @@ static void draw_steps_section(GContext *ctx, GRect area, int label_y,
   int bar_w = area.size.w * 85 / 100;
   if (bar_w > 90) bar_w = 90;
   int bx = area.origin.x + (area.size.w - bar_w) / 2;
-  int by = value_y + st_sz.h + 2;
+  int by = sy + st_sz.h + 2;
   graphics_context_set_stroke_color(ctx, T->frame);
   graphics_draw_rect(ctx, GRect(bx, by, bar_w, 4));
   int goal = g_settings.step_goal > 0 ? g_settings.step_goal : 1;
@@ -446,13 +403,7 @@ static void draw_steps_section(GContext *ctx, GRect area, int label_y,
   graphics_fill_rect(ctx, GRect(bx + 1, by + 1, fill_w, 2), 0, GCornerNone);
 }
 
-static void draw_heart_section(GContext *ctx, GRect area, int label_y,
-                               int value_y) {
-  GSize w = text_size("HEART", s_font_tech11);
-  draw_text(ctx, "HEART", s_font_tech11, T->mute,
-            GRect(area.origin.x + (area.size.w - w.w) / 2, label_y,
-                  w.w + 2, w.h + 2));
-
+static void draw_heart_section(GContext *ctx, GRect area) {
   char buf[16];
   if (s_heart_bpm > 0) {
     snprintf(buf, sizeof(buf), "%d", s_heart_bpm);
@@ -460,24 +411,22 @@ static void draw_heart_section(GContext *ctx, GRect area, int label_y,
     strcpy(buf, "--");
   }
   GSize v_sz = text_size(buf, s_font_tech24);
-  draw_text(ctx, buf, s_font_tech24, T->ink,
-            GRect(area.origin.x + (area.size.w - v_sz.w) / 2, value_y,
-                  v_sz.w + 2, v_sz.h + 2));
-
   GSize u_sz = text_size("BPM", s_font_tech11);
+  int vy = area.origin.y + (area.size.h - v_sz.h - u_sz.h - 1) / 2;
+  draw_text(ctx, buf, s_font_tech24, T->ink,
+            GRect(area.origin.x + (area.size.w - v_sz.w) / 2, vy,
+                  v_sz.w + 2, v_sz.h + 2));
   draw_text(ctx, "BPM", s_font_tech11, T->accent,
             GRect(area.origin.x + (area.size.w - u_sz.w) / 2,
-                  value_y + v_sz.h + 1, u_sz.w + 2, u_sz.h + 2));
+                  vy + v_sz.h + 1, u_sz.w + 2, u_sz.h + 2));
 }
 
-static void draw_seconds_section(GContext *ctx, GRect area, int label_y,
-                                 int value_y) {
-  // No label — the ticking DSEG digits explain themselves.
+static void draw_seconds_section(GContext *ctx, GRect area) {
   char ss[4];
   snprintf(ss, sizeof(ss), "%02d", s_now.tm_sec);
   GSize sec2 = text_size("88", s_font_dseg28);
   int sx = area.origin.x + (area.size.w - sec2.w) / 2;
-  int sy = (area.size.h - sec2.h) / 2;
+  int sy = area.origin.y + (area.size.h - sec2.h) / 2;
   draw_text(ctx, "88", s_font_dseg28, T->ghost,
             GRect(sx, sy, sec2.w + 2, sec2.h + 2));
   hatch_rect(ctx, GRect(sx, sy, sec2.w + 2, sec2.h + 2));
@@ -485,13 +434,12 @@ static void draw_seconds_section(GContext *ctx, GRect area, int label_y,
             GRect(sx, sy, sec2.w + 2, sec2.h + 2));
 }
 
-static void draw_slot(GContext *ctx, uint8_t kind, GRect area, int label_y,
-                      int value_y) {
+static void draw_slot(GContext *ctx, uint8_t kind, GRect area) {
   switch (kind) {
-    case SLOT_WEATHER: draw_weather_section(ctx, area, label_y, value_y); break;
-    case SLOT_STEPS:   draw_steps_section(ctx, area, label_y, value_y); break;
-    case SLOT_HEART:   draw_heart_section(ctx, area, label_y, value_y); break;
-    case SLOT_SECONDS: draw_seconds_section(ctx, area, label_y, value_y); break;
+    case SLOT_WEATHER: draw_weather_section(ctx, area); break;
+    case SLOT_STEPS:   draw_steps_section(ctx, area); break;
+    case SLOT_HEART:   draw_heart_section(ctx, area); break;
+    case SLOT_SECONDS: draw_seconds_section(ctx, area); break;
     default: break; // SLOT_NONE
   }
 }
@@ -501,19 +449,14 @@ static void footer_update_proc(Layer *layer, GContext *ctx) {
   uint8_t l = g_settings.slot_left, r = g_settings.slot_right;
   if (l == SLOT_NONE && r == SLOT_NONE) return;
 
-  GSize label_sz = text_size("WEATHER", s_font_tech11);
-  int label_y = 0;
-  int value_y = label_y + label_sz.h + 2;
   int half = b.size.w / 2;
-
   if (l != SLOT_NONE && r != SLOT_NONE) {
     graphics_context_set_stroke_color(ctx, T->mute);
     graphics_draw_line(ctx, GPoint(half, 2), GPoint(half, b.size.h - 2));
-    draw_slot(ctx, l, GRect(0, 0, half, b.size.h), label_y, value_y);
-    draw_slot(ctx, r, GRect(half, 0, half, b.size.h), label_y, value_y);
+    draw_slot(ctx, l, GRect(0, 0, half, b.size.h));
+    draw_slot(ctx, r, GRect(half, 0, half, b.size.h));
   } else {
-    draw_slot(ctx, l != SLOT_NONE ? l : r, GRect(0, 0, b.size.w, b.size.h),
-              label_y, value_y);
+    draw_slot(ctx, l != SLOT_NONE ? l : r, GRect(0, 0, b.size.w, b.size.h));
   }
 }
 
@@ -638,7 +581,6 @@ static void window_load(Window *window) {
   s_font_tech8 = fonts_load_custom_font(
       resource_get_handle(RESOURCE_ID_FONT_TECH_8));
 
-  stipple_create();
   hatch_create();
 
   s_bg_layer = layer_create(GRect(0, 0, SCREEN_W, SCREEN_H));
@@ -687,7 +629,6 @@ static void window_unload(Window *window) {
   fonts_unload_custom_font(s_font_tech14);
   fonts_unload_custom_font(s_font_tech11);
   fonts_unload_custom_font(s_font_tech8);
-  if (s_stipple) gbitmap_destroy(s_stipple);
   if (s_hatch) gbitmap_destroy(s_hatch);
 }
 

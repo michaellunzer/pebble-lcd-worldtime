@@ -16,8 +16,6 @@ typedef struct {
   GColor accent;     // AM/PM, seconds, home dot, step bar, low battery
   GColor ghost;      // unlit 7-segment shadow behind the digits
   GColor frame;      // box/frame lines
-  GColor stipple;    // background LCD texture dots (kept separate from
-                     // mute so darkening text doesn't darken the face)
   GColor sun;        // subsolar sun marker — distinct from accent
   GColor land_day;   // map land cells in daylight
   GColor land_night; // map land cells in darkness
@@ -41,7 +39,6 @@ static const Theme THEMES[THEME_COUNT] = {
     .accent     = {GColorBlackARGB8},        // ditto for orange seconds
     .ghost      = {GColorLightGrayARGB8},
     .frame      = {GColorBlackARGB8},
-    .stipple    = {GColorDarkGrayARGB8},
     .sun        = {GColorChromeYellowARGB8}, // #FFAA00
     .land_day   = {GColorIslamicGreenARGB8}, // #00AA00
     .land_night = {GColorDarkGreenARGB8},    // #005500
@@ -57,7 +54,6 @@ static const Theme THEMES[THEME_COUNT] = {
     .accent     = {GColorChromeYellowARGB8}, // #FFAA00, saturated amber
     .ghost      = {GColorDarkGrayARGB8},
     .frame      = {GColorWhiteARGB8},
-    .stipple    = {GColorLightGrayARGB8},
     .sun        = {GColorYellowARGB8},       // #FFFF00
     .land_day   = {GColorGreenARGB8},        // #00FF00
     .land_night = {GColorDarkGreenARGB8},    // #005500
@@ -71,7 +67,6 @@ static const Theme THEMES[THEME_COUNT] = {
     .accent     = {GColorBlackARGB8},        // mono: accent == ink
     .ghost      = {GColorLightGrayARGB8},
     .frame      = {GColorBlackARGB8},
-    .stipple    = {GColorDarkGrayARGB8},
     .sun        = {GColorBlackARGB8},        // mono stays ink-only
     .land_day   = {GColorBlackARGB8},
     .land_night = {GColorBlackARGB8},
@@ -85,7 +80,6 @@ static const Theme THEMES[THEME_COUNT] = {
     .accent     = {GColorCyanARGB8},         // #00FFFF, electric teal
     .ghost      = {GColorDarkGrayARGB8},
     .frame      = {GColorCyanARGB8},
-    .stipple    = {GColorLightGrayARGB8},
     .sun        = {GColorYellowARGB8},       // #FFFF00
     .land_day   = {GColorGreenARGB8},        // #00FF00
     .land_night = {GColorDarkGreenARGB8},    // #005500
