@@ -99,7 +99,7 @@ static void refresh_theme(void) {
   const Theme *next = active_theme();
   if (next == T) return;
   T = next;
-  s_stipple_palette[1] = T->mute;
+  s_stipple_palette[1] = T->stipple;
   s_hatch_palette[1] = T->bg;
   if (!s_bg_layer) return; // before window_load — nothing to redraw yet
   layer_mark_dirty(s_bg_layer);
@@ -143,7 +143,7 @@ static void stipple_create(void) {
   // blit, so it cannot be a stack temporary. (It's also how theme swaps
   // recolor the stipple without rebuilding the bitmap.)
   s_stipple_palette[0] = GColorClear;
-  s_stipple_palette[1] = T->mute;
+  s_stipple_palette[1] = T->stipple;
   s_stipple = gbitmap_create_blank_with_palette(
       GSize(SCREEN_W, SCREEN_H), GBitmapFormat1BitPalette,
       s_stipple_palette, false);
@@ -342,9 +342,8 @@ static void map_update_proc(Layer *layer, GContext *ctx) {
   GRect b = layer_get_bounds(layer);
   time_t now = time(NULL);
   struct tm utc = *gmtime(&now);
-  world_map_draw(ctx, b, &utc, T->ink, T->mute, T->accent, T->bg, T->sun,
-                 g_settings.show_dot, g_settings.loc_lat_x100,
-                 g_settings.loc_lon_x100);
+  world_map_draw(ctx, b, &utc, T, g_settings.show_dot,
+                 g_settings.loc_lat_x100, g_settings.loc_lon_x100);
 }
 
 // ----------------------------------------------------------------- footer

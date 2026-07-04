@@ -1,36 +1,40 @@
 #include "world_map.h"
 
-// World bitmap (hand-authored, 60 cols x 19 rows, mercator-ish).
-// X = land, . = sea. Same art as the design prototype.
+// World bitmap (60 cols x 19 rows). X = land, . = sea.
+//
+// Generated from Natural Earth 110m land polygons: each cell is 3x3
+// point-in-polygon supersampled at the row's latitude band (land when
+// >= 3 of 9 hits), so coastlines land where the linear-longitude math
+// expects them. Column c covers lon -180 + c*6 .. -174 + c*6.
 #define MAP_COLS 60
 #define MAP_ROWS 19
 
 static const char *const WORLD[MAP_ROWS] = {
-  /* 75N */ ".........................XX.................XXXXX.........",
-  /* 67N */ "....XXX..................XXXX............XXXXXXXXXXXXXXX...",
-  /* 60N */ "...XXXXXXXX............XXXXX..XX.........XXXXXXXXXXXXXXX...",
-  /* 53N */ "..XXXXXXXXXXX...........XX...XXXX.X......XXXXXXXXXXXXXXXX..",
-  /* 47N */ "..XXXXXXXXXXXX..............XXXXXXXXXX...XXXXXXXXXXXXXXX...",
-  /* 41N */ "...XXXXXXXXXX................XXXX.XXXXXXXXXXXXXX.XXXXXX....",
-  /* 35N */ "....XXXXXXXX.................XXXXXXXXXXXXXXX..XXXXXXX......",
-  /* 28N */ ".....XXXXXX...............XXXXXXX.XXXXXXXXXX..XXX.XXX......",
-  /* 21N */ "......XXXX................XXXXXXXX.XXXXX..XXX....XX........",
-  /* 14N */ "........XX................XXXXXXX...XXX...XXX..............",
-  /* 7N  */ ".........XX................XXXX.........XXXXX.X............",
-  /* 0   */ "..........XXXX.............XXX...........XXXXXX.X..........",
-  /* 7S  */ "..........XXXX..............XX...........XXXX...XX.........",
-  /* 14S */ "..........XXXXX..............X.............XXX..XXXX.......",
-  /* 22S */ "...........XXX...............XX..X............XXXXXXX......",
-  /* 30S */ "...........XXX................XX................XXXX.X.....",
-  /* 38S */ "...........XX....................................X..XX.....",
-  /* 47S */ "............X...............................................",
-  /* 60S */ "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  /* 75N */ ".........XXX.XXXX..XXXXXXXX............X....XXXXXXX..X......",
+  /* 67N */ "X.XXXXXXXXXXXXXX.XX..XXXXXX.....XXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  /* 60N */ "..XXXXXXXXXXXXX..XXX..X........XX.XXXXXXXXXXXXXXXXXXXXXXXXX.",
+  /* 53N */ "........XXXXXXXXXXXXX.......XXXXXXXXXXXXXXXXXXXXXXXXXX..X...",
+  /* 47N */ ".........XXXXXXXXXXX.........XXXXXXXXXXXXXXXXXXXXXXXX.......",
+  /* 41N */ ".........XXXXXXXXX..........XX.XXXXXXXXXXXXXXXXXXXXX.X......",
+  /* 35N */ "..........XXXXXXX............XXX...XXXXXXXXXXXXXXX.XX.......",
+  /* 28N */ "...........XXXX.X...........XXXXXXXXXXXXXXXXXXXXXX..........",
+  /* 21N */ "............XX.X...........XXXXXXXXXXXXX.XXXXXXXX...........",
+  /* 14N */ "..............XX...........XXXXXXXXXXXX...XX..XX..X.........",
+  /* 7N  */ ".................XXXX.......XXXXXXXXXX........X.............",
+  /* 0   */ ".................XXXXX.........XXXXXX.........XXXX..........",
+  /* 7S  */ "................XXXXXXXX........XXXXX................XX.....",
+  /* 14S */ ".................XXXXXXX........XXXXX..............XXX......",
+  /* 22S */ "..................XXXXX.........XXXX.X...........XXXXXX.....",
+  /* 30S */ "..................XXXX...........XX..............XXXXXXX....",
+  /* 38S */ "..................XX.................................XX.....",
+  /* 47S */ ".................XX.........................................",
+  /* 70S */ "..................XX........XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX..",
 };
 
 // Latitude at the centre of each row, used by the day/night calc.
 static const int8_t WORLD_LATS[MAP_ROWS] = {
   75, 67, 60, 53, 47, 41, 35, 28, 21, 14, 7, 0,
-  -7, -14, -22, -30, -38, -47, -60,
+  -7, -14, -22, -30, -38, -47, -70,
 };
 
 // Degrees -> Pebble trig-angle units.
@@ -52,9 +56,8 @@ static int lat_to_y(int lat_deg, int16_t y0, int16_t h) {
 }
 
 void world_map_draw(GContext *ctx, GRect bounds, const struct tm *utc,
-                    GColor ink, GColor mute, GColor accent, GColor bg,
-                    GColor sun, bool show_home, int32_t home_lat_x100,
-                    int32_t home_lon_x100) {
+                    const Theme *theme, bool show_home,
+                    int32_t home_lat_x100, int32_t home_lon_x100) {
   const int16_t w = bounds.size.w;
   const int16_t h = bounds.size.h;
   const int16_t x0 = bounds.origin.x;
@@ -104,12 +107,15 @@ void world_map_draw(GContext *ctx, GRect bounds, const struct tm *utc,
       bool night = cos_z < 0;
       bool land = row[c] == 'X';
 
+      // Green land, blue sea; the terminator reads through the
+      // day/night shades of each.
       if (land) {
-        graphics_context_set_fill_color(ctx, ink);
+        graphics_context_set_fill_color(
+            ctx, night ? theme->land_night : theme->land_day);
         graphics_fill_rect(ctx, GRect(cx, cy, dot_w, dot_h), 0, GCornerNone);
-      } else if (night) {
-        // Night ocean: small muted dot — reads as the shaded hemisphere.
-        graphics_context_set_fill_color(ctx, mute);
+      } else {
+        graphics_context_set_fill_color(
+            ctx, night ? theme->sea_night : theme->sea_day);
         graphics_fill_rect(ctx, GRect(cx + dot_w / 2, cy + dot_h / 2, 1, 1),
                            0, GCornerNone);
       }
@@ -123,12 +129,12 @@ void world_map_draw(GContext *ctx, GRect bounds, const struct tm *utc,
     int32_t sun_x =
         x0 + (int32_t)(((int64_t)(sublon_x100 + 18000) * w) / 36000);
     int sun_y = lat_to_y(decl_x100 / 100, y0, h);
-    graphics_context_set_stroke_color(ctx, ink);
+    graphics_context_set_stroke_color(ctx, theme->ink);
     graphics_draw_line(ctx, GPoint(sun_x - 7, sun_y), GPoint(sun_x + 7, sun_y));
     graphics_draw_line(ctx, GPoint(sun_x, sun_y - 7), GPoint(sun_x, sun_y + 7));
-    graphics_context_set_fill_color(ctx, sun);
+    graphics_context_set_fill_color(ctx, theme->sun);
     graphics_fill_circle(ctx, GPoint(sun_x, sun_y), 4);
-    graphics_context_set_stroke_color(ctx, ink);
+    graphics_context_set_stroke_color(ctx, theme->ink);
     graphics_draw_circle(ctx, GPoint(sun_x, sun_y), 4);
   }
 
@@ -136,13 +142,13 @@ void world_map_draw(GContext *ctx, GRect bounds, const struct tm *utc,
   if (show_home) {
     int32_t hx = x0 + (int32_t)(((int64_t)(home_lon_x100 + 18000) * w) / 36000);
     int hy = lat_to_y(home_lat_x100 / 100, y0, h);
-    graphics_context_set_fill_color(ctx, bg);
+    graphics_context_set_fill_color(ctx, theme->bg);
     graphics_fill_circle(ctx, GPoint(hx, hy), 3);
-    graphics_context_set_fill_color(ctx, accent);
+    graphics_context_set_fill_color(ctx, theme->accent);
     graphics_fill_circle(ctx, GPoint(hx, hy), 2);
   }
 
   // Frame
-  graphics_context_set_stroke_color(ctx, mute);
+  graphics_context_set_stroke_color(ctx, theme->mute);
   graphics_draw_rect(ctx, bounds);
 }

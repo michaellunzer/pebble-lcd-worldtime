@@ -12,7 +12,7 @@ of truth for the layout.
 │ ┌──────────────────────────┐ │
 │ │  02:32  ³²SEC            │ │  time box hugs digits: 42px (+22px
 │ └──────────────────────────┘ │  seconds) or 50px when seconds move
-│ ▓▓░ dot-matrix world map ░▓▓ │  map takes the rest, day/night shading
+│ ▓▓░ dot-matrix world map ░▓▓ │  green/blue map, day/night shading
 │  WEATHER      │      STEPS   │  two slots: weather/steps/heart/sec
 └──────────────────────────────┘
 ```
@@ -24,7 +24,7 @@ of truth for the layout.
 | Header | 10 | 18 | day-of-week + date (16px double-struck bold, full month when it fits), AM/PM (accent) |
 | Battery | 32 | 6 | 10 blocks, lit or empty (one per 10 %), accent ≤ 20 % |
 | Time | 42 | hugs digits | framed box (full 188px width), DSEG7 42px digits + 22px seconds — or 50px digits alone when seconds are off/moved to a slot |
-| Map | below time | remainder | 60 × 19 dot grid, solar terminator, yellow sun marker, accent home dot |
+| Map | below time | remainder | 60 × 19 grid from Natural Earth 110m coastlines — green land / blue sea in day/night shades, yellow sun marker, accent home dot |
 | Footer | 172 | 50 | two configurable slots: weather (icon + temp) · steps · heart rate · seconds · empty |
 
 Screen padding 6 px; content inset to x = 10, width 180. The LCD stipple
@@ -55,8 +55,9 @@ on the watch.
 - **Colors** are quantized to Pebble's 64-color palette and pushed
   saturated for the physical panel (the prototype's soft tones washed
   out on-device): dark themes use white ink with ChromeYellow / Cyan
-  accents, positive uses Orange on Brass. All four themes are in
-  `src/c/theme.h`; the active one is chosen at runtime from settings.
+  accents; positive runs pure black text/accents on Brass. All four
+  themes are in `src/c/theme.h`; the active one is at runtime from
+  settings.
 - **Ghost segments** render in a solid light color knocked back by a
   75 % bg-colored hatch, approximating the prototype's 8 % alpha.
 - **Time digits are 42 px with inline 22 px seconds, 50 px without**
