@@ -39,8 +39,6 @@ enum WeatherKind { WX_SUN = 0, WX_CLOUD = 1, WX_RAIN = 2, WX_MOON = 3 };
 
 enum PersistKeys {
   PERSIST_WX_TEMP = 1,
-  PERSIST_WX_HI = 2,
-  PERSIST_WX_LO = 3,
   PERSIST_WX_KIND = 4,
 };
 
@@ -61,7 +59,7 @@ static int s_battery_pct = 100;
 static int s_steps = 0;
 static int s_heart_bpm = 0;
 // Weather defaults match the design's sample state until real data arrives.
-static int s_wx_temp = 68, s_wx_hi = 74, s_wx_lo = 55;
+static int s_wx_temp = 68;
 static int s_wx_kind = WX_SUN;
 
 static const Theme *T = &THEMES[THEME_POSITIVE];
@@ -127,6 +125,15 @@ static void draw_text(GContext *ctx, const char *text, GFont font,
                      GTextAlignmentLeft, NULL);
 }
 
+// Share Tech Mono has no bold cut — double-striking 1px apart reads as
+// bold on the physical panel, where the single-weight strokes wash out.
+static void draw_text_bold(GContext *ctx, const char *text, GFont font,
+                           GColor color, GRect box) {
+  draw_text(ctx, text, font, color, box);
+  box.origin.x += 1;
+  draw_text(ctx, text, font, color, box);
+}
+
 // ------------------------------------------------------------- background
 
 // The stipple is prebuilt as a 1-bit palettized bitmap (transparent +
@@ -163,7 +170,9 @@ static void hatch_create(void) {
   uint8_t *data = gbitmap_get_data(s_hatch);
   uint16_t stride = gbitmap_get_bytes_per_row(s_hatch);
   for (int y = 0; y < 8; y++) {
-    data[y * stride] = (y % 2 == 0) ? 0xAA : 0x55; // 1px checkerboard
+    // 75% coverage: ghost pixels survive only 1-in-4 — unlit segments
+    // read as a faint texture instead of competing with lit digits.
+    data[y * stride] = (y % 2 == 0) ? 0xAA : 0xFF;
   }
 }
 
@@ -202,67 +211,55 @@ static void header_update_proc(Layer *layer, GContext *ctx) {
   const char *dow = DOW[s_now.tm_wday];
   const char *ampm = s_now.tm_hour >= 12 ? "PM" : "AM";
 
-  // Right side first, so the date knows how much room it has.
+  // Right: AM/PM in accent at the far edge.
   GSize ampm_sz = text_size(ampm, s_font_tech14);
   int ampm_y = (b.size.h - ampm_sz.h) / 2 - 1;
-  int ampm_x = b.size.w - ampm_sz.w;
-  draw_text(ctx, ampm, s_font_tech14, T->accent,
-            GRect(ampm_x, ampm_y, ampm_sz.w + 1, ampm_sz.h + 2));
+  int ampm_x = b.size.w - ampm_sz.w - 1;
+  draw_text_bold(ctx, ampm, s_font_tech14, T->accent,
+                 GRect(ampm_x, ampm_y, ampm_sz.w + 2, ampm_sz.h + 2));
 
   int right_limit = ampm_x - 8;
-  if (g_settings.show_city) {
-    const char *city = g_settings.city_tag;
-    GSize city_sz = text_size(city, s_font_tech11);
-    GRect city_box = GRect(ampm_x - city_sz.w - 14,
-                           (b.size.h - city_sz.h - 4) / 2 - 1,
-                           city_sz.w + 8, city_sz.h + 4);
-    graphics_context_set_stroke_color(ctx, T->frame);
-    graphics_draw_rect(ctx, city_box);
-    draw_text(ctx, city, s_font_tech11, T->ink,
-              GRect(city_box.origin.x + 4, city_box.origin.y + 1,
-                    city_sz.w + 2, city_sz.h + 2));
-    right_limit = city_box.origin.x - 6;
-  }
 
-  // Left: DOW (ink) + date (mute) at 16px, with the full month name when
-  // it fits the remaining width (SEPTEMBER etc. fall back to 3 letters).
+  // Left: DOW (ink) + date (mute) at 16px, double-struck for weight,
+  // with the full month name when it fits (SEPTEMBER etc. fall back
+  // to 3 letters).
   GSize row_sz = text_size("00", s_font_tech16);
   int text_y = (b.size.h - row_sz.h) / 2 - 1;
   GSize dow_sz = text_size(dow, s_font_tech16);
-  draw_text(ctx, dow, s_font_tech16, T->ink,
-            GRect(0, text_y, dow_sz.w + 2, row_sz.h + 2));
+  draw_text_bold(ctx, dow, s_font_tech16, T->ink,
+                 GRect(0, text_y, dow_sz.w + 3, row_sz.h + 2));
 
-  int date_x = dow_sz.w + 6;
+  int date_x = dow_sz.w + 7;
   char date_buf[16];
   snprintf(date_buf, sizeof(date_buf), "%02d %s", s_now.tm_mday,
            MONF[s_now.tm_mon]);
-  if (date_x + text_size(date_buf, s_font_tech16).w > right_limit) {
+  if (date_x + text_size(date_buf, s_font_tech16).w + 1 > right_limit) {
     snprintf(date_buf, sizeof(date_buf), "%02d %s", s_now.tm_mday,
              MON[s_now.tm_mon]);
   }
-  draw_text(ctx, date_buf, s_font_tech16, T->mute,
-            GRect(date_x, text_y, right_limit - date_x, row_sz.h + 2));
+  draw_text_bold(ctx, date_buf, s_font_tech16, T->mute,
+                 GRect(date_x, text_y, right_limit - date_x, row_sz.h + 2));
 }
 
 // ---------------------------------------------------------------- battery
 
 static void battery_update_proc(Layer *layer, GContext *ctx) {
   GRect b = layer_get_bounds(layer);
-  const int segs = 20;
-  int filled = (s_battery_pct * segs + 50) / 100;
+  // 10 blocks = one per 10%, each simply lit or empty — halfway fills
+  // never read right on the panel.
+  const int segs = 10;
+  int filled = (s_battery_pct + 5) / 10;
   GColor fill = s_battery_pct <= BATTERY_LOW_PCT ? T->accent : T->ink;
 
   graphics_context_set_stroke_color(ctx, T->ink);
   graphics_draw_rect(ctx, b);
 
-  // Lit segments in ink (accent when low), unlit ones in ghost — without
-  // the ghost tail the bar read as decoration, not a gauge.
   int inner_w = b.size.w - 2;
-  for (int i = 0; i < segs; i++) {
+  graphics_context_set_fill_color(ctx, fill);
+  for (int i = 0; i < filled; i++) {
     int xs = 1 + i * inner_w / segs;
     int xe = 1 + (i + 1) * inner_w / segs;
-    graphics_context_set_fill_color(ctx, i < filled ? fill : T->ghost);
-    graphics_fill_rect(ctx, GRect(xs + 1, 2, xe - xs - 1, b.size.h - 4),
+    graphics_fill_rect(ctx, GRect(xs + 1, 2, xe - xs - 2, b.size.h - 4),
                        0, GCornerNone);
   }
 }
@@ -404,30 +401,17 @@ static void draw_weather_section(GContext *ctx, GRect area, int label_y,
             GRect(area.origin.x + (area.size.w - w.w) / 2, label_y,
                   w.w + 2, w.h + 2));
 
+  // Icon + temperature carry the whole story, centered in the space
+  // below the label.
   char temp_buf[16];
   snprintf(temp_buf, sizeof(temp_buf), "%d°", s_wx_temp);
   GSize temp_sz = text_size(temp_buf, s_font_tech24);
-  int group_w = 18 + 4 + temp_sz.w;
+  int group_w = 18 + 6 + temp_sz.w;
   int gx = area.origin.x + (area.size.w - group_w) / 2;
-  draw_weather_icon(ctx, GPoint(gx + 9, value_y + temp_sz.h / 2), s_wx_kind);
+  int gy = value_y + (area.size.h - value_y - temp_sz.h) / 2;
+  draw_weather_icon(ctx, GPoint(gx + 9, gy + temp_sz.h / 2), s_wx_kind);
   draw_text(ctx, temp_buf, s_font_tech24, T->ink,
-            GRect(gx + 22, value_y, temp_sz.w + 2, temp_sz.h + 2));
-
-  char hilo_buf[16];
-  snprintf(hilo_buf, sizeof(hilo_buf), "H%d°  L%d°", s_wx_hi, s_wx_lo);
-  GSize hilo_sz = text_size(hilo_buf, s_font_tech11);
-  int hy = value_y + temp_sz.h + 1;
-  int hx = area.origin.x + (area.size.w - hilo_sz.w) / 2;
-  // "H" + hi in accent, rest in mute — draw in two passes.
-  char hi_part[8];
-  snprintf(hi_part, sizeof(hi_part), "H%d°", s_wx_hi);
-  GSize hi_sz = text_size(hi_part, s_font_tech11);
-  draw_text(ctx, hi_part, s_font_tech11, T->accent,
-            GRect(hx, hy, hi_sz.w + 2, hi_sz.h + 2));
-  char lo_part[8];
-  snprintf(lo_part, sizeof(lo_part), "L%d°", s_wx_lo);
-  draw_text(ctx, lo_part, s_font_tech11, T->mute,
-            GRect(hx + hi_sz.w + 6, hy, hilo_sz.w, hi_sz.h + 2));
+            GRect(gx + 24, gy, temp_sz.w + 2, temp_sz.h + 2));
 }
 
 static void draw_steps_section(GContext *ctx, GRect area, int label_y,
@@ -470,7 +454,7 @@ static void draw_heart_section(GContext *ctx, GRect area, int label_y,
             GRect(area.origin.x + (area.size.w - w.w) / 2, label_y,
                   w.w + 2, w.h + 2));
 
-  char buf[8];
+  char buf[16];
   if (s_heart_bpm > 0) {
     snprintf(buf, sizeof(buf), "%d", s_heart_bpm);
   } else {
@@ -489,20 +473,17 @@ static void draw_heart_section(GContext *ctx, GRect area, int label_y,
 
 static void draw_seconds_section(GContext *ctx, GRect area, int label_y,
                                  int value_y) {
-  GSize w = text_size("SECONDS", s_font_tech11);
-  draw_text(ctx, "SECONDS", s_font_tech11, T->mute,
-            GRect(area.origin.x + (area.size.w - w.w) / 2, label_y,
-                  w.w + 2, w.h + 2));
-
+  // No label — the ticking DSEG digits explain themselves.
   char ss[4];
   snprintf(ss, sizeof(ss), "%02d", s_now.tm_sec);
   GSize sec2 = text_size("88", s_font_dseg28);
   int sx = area.origin.x + (area.size.w - sec2.w) / 2;
+  int sy = (area.size.h - sec2.h) / 2;
   draw_text(ctx, "88", s_font_dseg28, T->ghost,
-            GRect(sx, value_y, sec2.w + 2, sec2.h + 2));
-  hatch_rect(ctx, GRect(sx, value_y, sec2.w + 2, sec2.h + 2));
+            GRect(sx, sy, sec2.w + 2, sec2.h + 2));
+  hatch_rect(ctx, GRect(sx, sy, sec2.w + 2, sec2.h + 2));
   draw_text(ctx, ss, s_font_dseg28, T->accent,
-            GRect(sx, value_y, sec2.w + 2, sec2.h + 2));
+            GRect(sx, sy, sec2.w + 2, sec2.h + 2));
 }
 
 static void draw_slot(GContext *ctx, uint8_t kind, GRect area, int label_y,
@@ -615,13 +596,9 @@ static void inbox_received(DictionaryIterator *iter, void *context) {
     s_wx_temp = t->value->int32;
     wx_seen = true;
   }
-  if ((t = dict_find(iter, MESSAGE_KEY_TEMP_HI))) s_wx_hi = t->value->int32;
-  if ((t = dict_find(iter, MESSAGE_KEY_TEMP_LO))) s_wx_lo = t->value->int32;
   if ((t = dict_find(iter, MESSAGE_KEY_CONDITION))) s_wx_kind = t->value->int32;
   if (wx_seen) {
     persist_write_int(PERSIST_WX_TEMP, s_wx_temp);
-    persist_write_int(PERSIST_WX_HI, s_wx_hi);
-    persist_write_int(PERSIST_WX_LO, s_wx_lo);
     persist_write_int(PERSIST_WX_KIND, s_wx_kind);
     layer_mark_dirty(s_footer_layer);
   }
@@ -724,8 +701,6 @@ static void init(void) {
 
   if (persist_exists(PERSIST_WX_TEMP)) {
     s_wx_temp = persist_read_int(PERSIST_WX_TEMP);
-    s_wx_hi = persist_read_int(PERSIST_WX_HI);
-    s_wx_lo = persist_read_int(PERSIST_WX_LO);
     s_wx_kind = persist_read_int(PERSIST_WX_KIND);
   }
 

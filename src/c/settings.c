@@ -16,7 +16,6 @@ Settings g_settings;
 
 static void settings_defaults(void) {
   g_settings = (Settings){
-    .city_tag = "SF",
     .loc_lat_x100 = 3777,    // San Francisco
     .loc_lon_x100 = -12242,
     .show_dot = true,
@@ -28,7 +27,6 @@ static void settings_defaults(void) {
     .day_start = 7,
     .night_start = 20,
     .show_seconds = true,
-    .show_city = true,
     .slot_left = SLOT_WEATHER,
     .slot_right = SLOT_STEPS,
     .use_celsius = false,
@@ -37,8 +35,6 @@ static void settings_defaults(void) {
 }
 
 static void settings_sanitize(void) {
-  g_settings.city_tag[sizeof(g_settings.city_tag) - 1] = '\0';
-  if (g_settings.city_tag[0] == '\0') strcpy(g_settings.city_tag, "SF");
   if (g_settings.loc_lat_x100 < -9000) g_settings.loc_lat_x100 = -9000;
   if (g_settings.loc_lat_x100 > 9000) g_settings.loc_lat_x100 = 9000;
   if (g_settings.loc_lon_x100 < -18000) g_settings.loc_lon_x100 = -18000;
@@ -75,12 +71,6 @@ bool settings_apply_message(DictionaryIterator *iter) {
   bool seen = false;
   Tuple *t;
 
-  if ((t = dict_find(iter, MESSAGE_KEY_CITY_TAG))) {
-    strncpy(g_settings.city_tag, t->value->cstring,
-            sizeof(g_settings.city_tag) - 1);
-    g_settings.city_tag[sizeof(g_settings.city_tag) - 1] = '\0';
-    seen = true;
-  }
   if ((t = dict_find(iter, MESSAGE_KEY_LOC_LAT))) {
     g_settings.loc_lat_x100 = tuple_int(t);
     seen = true;
@@ -123,10 +113,6 @@ bool settings_apply_message(DictionaryIterator *iter) {
   }
   if ((t = dict_find(iter, MESSAGE_KEY_SHOW_SECONDS))) {
     g_settings.show_seconds = tuple_int(t) != 0;
-    seen = true;
-  }
-  if ((t = dict_find(iter, MESSAGE_KEY_SHOW_CITY))) {
-    g_settings.show_city = tuple_int(t) != 0;
     seen = true;
   }
   if ((t = dict_find(iter, MESSAGE_KEY_SLOT_LEFT))) {

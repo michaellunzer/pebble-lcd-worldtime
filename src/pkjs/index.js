@@ -52,9 +52,8 @@ function fetchWeather(lat, lon) {
     '?latitude=' + lat.toFixed(4) +
     '&longitude=' + lon.toFixed(4) +
     '&current=temperature_2m,weather_code,is_day' +
-    '&daily=temperature_2m_max,temperature_2m_min' +
     '&temperature_unit=' + (prefs.celsius ? 'celsius' : 'fahrenheit') +
-    '&forecast_days=1&timezone=auto';
+    '&timezone=auto';
 
   var xhr = new XMLHttpRequest();
   xhr.onload = function () {
@@ -62,8 +61,6 @@ function fetchWeather(lat, lon) {
       var data = JSON.parse(xhr.responseText);
       sendWeather({
         TEMPERATURE: Math.round(data.current.temperature_2m),
-        TEMP_HI: Math.round(data.daily.temperature_2m_max[0]),
-        TEMP_LO: Math.round(data.daily.temperature_2m_min[0]),
         CONDITION: conditionFor(data.current.weather_code,
                                 data.current.is_day === 1)
       });
@@ -110,10 +107,6 @@ Pebble.addEventListener('webviewclosed', function (e) {
   if (!isFinite(lon) || lon < -180 || lon > 180) lon = prefs.lon;
   dict[messageKeys.LOC_LAT] = Math.round(lat * 100);
   dict[messageKeys.LOC_LON] = Math.round(lon * 100);
-
-  var tag = String(dict[messageKeys.CITY_TAG] || '')
-    .toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 3);
-  dict[messageKeys.CITY_TAG] = tag || 'SF';
 
   // Clay select values are strings — the watch expects ints.
   ['THEME_MODE', 'THEME_SEL', 'THEME_DAY', 'THEME_NIGHT',

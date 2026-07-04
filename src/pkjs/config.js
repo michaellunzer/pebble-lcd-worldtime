@@ -23,20 +23,6 @@ module.exports = [
       { type: 'heading', defaultValue: 'Location' },
       {
         type: 'input',
-        messageKey: 'CITY_TAG',
-        defaultValue: 'SF',
-        label: 'City code',
-        description: '1-3 letters shown in the header box, e.g. SF, NYC, LDN.',
-        attributes: { limit: 3, placeholder: 'SF' }
-      },
-      {
-        type: 'toggle',
-        messageKey: 'SHOW_CITY',
-        defaultValue: true,
-        label: 'Show city code box'
-      },
-      {
-        type: 'input',
         messageKey: 'LOC_LAT',
         defaultValue: '37.77',
         label: 'Latitude',

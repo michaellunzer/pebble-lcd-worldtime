@@ -20,7 +20,6 @@ enum SlotKind {
 };
 
 typedef struct {
-  char city_tag[4];      // 1-3 chars shown in the header box
   int32_t loc_lat_x100;  // home dot, centi-degrees (+N)
   int32_t loc_lon_x100;  // centi-degrees (+E)
   bool show_dot;         // draw the home dot on the map
@@ -32,7 +31,6 @@ typedef struct {
   uint8_t day_start;     // hour the day theme takes over (0-23)
   uint8_t night_start;   // hour the night theme takes over (0-23)
   bool show_seconds;     // seconds column beside the time (SECOND_UNIT)
-  bool show_city;        // city-code box in the header
   uint8_t slot_left;     // SlotKind for the bottom-left box
   uint8_t slot_right;    // SlotKind for the bottom-right box
   bool use_celsius;      // display unit; pkjs fetches accordingly

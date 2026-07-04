@@ -35,20 +35,22 @@ static const Theme THEMES[THEME_COUNT] = {
     .bg     = {GColorBrassARGB8},        // #AAAA55, warm LCD tan
     .ink    = {GColorBlackARGB8},
     .mute   = {GColorDarkGrayARGB8},
-    .accent = {GColorWindsorTanARGB8},   // #AA5500, rust
+    .accent = {GColorOrangeARGB8},       // #FF5500, saturated rust
     .ghost  = {GColorLightGrayARGB8},
     .paper  = {GColorBrassARGB8},
     .frame  = {GColorBlackARGB8},
     .sun    = {GColorChromeYellowARGB8}, // #FFAA00, pops on the tan face
   },
+  // Dark faces run full-contrast: white ink and saturated accents —
+  // gray-on-black washes out badly on the real panel.
   [THEME_NEGATIVE] = {
     .bg     = {GColorBlackARGB8},
-    .ink    = {GColorLightGrayARGB8},
-    .mute   = {GColorDarkGrayARGB8},
-    .accent = {GColorRajahARGB8},        // #FFAA55, amber
+    .ink    = {GColorWhiteARGB8},
+    .mute   = {GColorLightGrayARGB8},
+    .accent = {GColorChromeYellowARGB8}, // #FFAA00, saturated amber
     .ghost  = {GColorDarkGrayARGB8},
     .paper  = {GColorBlackARGB8},
-    .frame  = {GColorLightGrayARGB8},
+    .frame  = {GColorWhiteARGB8},
     .sun    = {GColorYellowARGB8},       // #FFFF00, bright on black
   },
   [THEME_MONO] = {
@@ -63,12 +65,12 @@ static const Theme THEMES[THEME_COUNT] = {
   },
   [THEME_ACCENT] = {
     .bg     = {GColorBlackARGB8},
-    .ink    = {GColorLightGrayARGB8},
-    .mute   = {GColorDarkGrayARGB8},
-    .accent = {GColorCadetBlueARGB8},    // #55AAAA, teal
+    .ink    = {GColorWhiteARGB8},
+    .mute   = {GColorLightGrayARGB8},
+    .accent = {GColorCyanARGB8},         // #00FFFF, electric teal
     .ghost  = {GColorDarkGrayARGB8},
     .paper  = {GColorBlackARGB8},
-    .frame  = {GColorCadetBlueARGB8},
+    .frame  = {GColorCyanARGB8},
     .sun    = {GColorYellowARGB8},       // #FFFF00, bright on black
   },
 };

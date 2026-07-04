@@ -22,10 +22,7 @@
     },
     "messageKeys": [
       "TEMPERATURE",
-      "TEMP_HI",
-      "TEMP_LO",
       "CONDITION",
-      "CITY_TAG",
       "LOC_LAT",
       "LOC_LON",
       "SHOW_DOT",
@@ -37,7 +34,6 @@
       "DAY_START",
       "NIGHT_START",
       "SHOW_SECONDS",
-      "SHOW_CITY",
       "SLOT_LEFT",
       "SLOT_RIGHT",
       "USE_CELSIUS",

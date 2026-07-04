@@ -21,11 +21,11 @@ of truth for the layout.
 
 | Strip | Y | Height | Content |
 |---|---|---|---|
-| Header | 10 | 18 | day-of-week + date (16px, full month when it fits), optional city tag, AM/PM (accent) |
-| Battery | 32 | 6 | 20 segments (unlit in ghost), accent ≤ 20 % |
+| Header | 10 | 18 | day-of-week + date (16px double-struck bold, full month when it fits), AM/PM (accent) |
+| Battery | 32 | 6 | 10 blocks, lit or empty (one per 10 %), accent ≤ 20 % |
 | Time | 42 | hugs digits | framed box (full 188px width), DSEG7 42px digits + 22px seconds — or 50px digits alone when seconds are off/moved to a slot |
 | Map | below time | remainder | 60 × 19 dot grid, solar terminator, yellow sun marker, accent home dot |
-| Footer | 172 | 50 | two configurable slots: weather · steps · heart rate · seconds · empty |
+| Footer | 172 | 50 | two configurable slots: weather (icon + temp) · steps · heart rate · seconds · empty |
 
 Screen padding 6 px; content inset to x = 10, width 180. The LCD stipple
 texture (prebuilt 1-bit bitmap, one blit per frame) covers the face and
@@ -36,8 +36,7 @@ stops at the time box edges, per the design.
 All user options live in a Clay configuration page (open the watchface's
 settings in the Pebble mobile app):
 
-- **Location** — city code shown in the header box (with a toggle to
-  hide the box), home-dot latitude / longitude (drawn on the map), and
+- **Location** — home-dot latitude / longitude (drawn on the map), and
   whether weather uses the phone's GPS or those fixed coordinates.
 - **Theme** — one of the four LCD variants, either fixed or in **auto
   day/night mode**: pick a day theme and a night theme plus the hours
@@ -53,12 +52,13 @@ on the watch.
 
 ## Design → device deviations
 
-- **Colors** are quantized to Pebble's 64-color palette. Positive LCD's
-  `#c9c4ae` tan becomes `GColorBrass`, the rust accent `#7a3a18` becomes
-  `GColorWindsorTan`, and the prototype's alpha-based ghost/stipple/mute
-  tones map to solid Light/DarkGray. All four themes are in
+- **Colors** are quantized to Pebble's 64-color palette and pushed
+  saturated for the physical panel (the prototype's soft tones washed
+  out on-device): dark themes use white ink with ChromeYellow / Cyan
+  accents, positive uses Orange on Brass. All four themes are in
   `src/c/theme.h`; the active one is chosen at runtime from settings.
-- **Ghost segments** render as a solid light color rather than 8 % alpha.
+- **Ghost segments** render in a solid light color knocked back by a
+  75 % bg-colored hatch, approximating the prototype's 8 % alpha.
 - **Time digits are 42 px with inline 22 px seconds, 50 px without**
   (spec says 44/18): the time box spans the full 188 px screen padding
   (the other strips keep the 180 px column) — the largest sizes DSEG7's
