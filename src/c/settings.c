@@ -1,7 +1,16 @@
 #include "settings.h"
 #include "theme.h"
+#include <stdlib.h>
 
 #define PERSIST_SETTINGS 100
+
+// Clay sends select values as strings ("3"), sliders and toggles as
+// ints — reading value->int32 on a cstring yields ASCII garbage, so
+// every numeric key goes through this.
+static int32_t tuple_int(const Tuple *t) {
+  if (t->type == TUPLE_CSTRING) return atoi(t->value->cstring);
+  return t->value->int32;
+}
 
 Settings g_settings;
 
@@ -73,67 +82,67 @@ bool settings_apply_message(DictionaryIterator *iter) {
     seen = true;
   }
   if ((t = dict_find(iter, MESSAGE_KEY_LOC_LAT))) {
-    g_settings.loc_lat_x100 = t->value->int32;
+    g_settings.loc_lat_x100 = tuple_int(t);
     seen = true;
   }
   if ((t = dict_find(iter, MESSAGE_KEY_LOC_LON))) {
-    g_settings.loc_lon_x100 = t->value->int32;
+    g_settings.loc_lon_x100 = tuple_int(t);
     seen = true;
   }
   if ((t = dict_find(iter, MESSAGE_KEY_SHOW_DOT))) {
-    g_settings.show_dot = t->value->int32 != 0;
+    g_settings.show_dot = tuple_int(t) != 0;
     seen = true;
   }
   if ((t = dict_find(iter, MESSAGE_KEY_WX_GPS))) {
-    g_settings.wx_gps = t->value->int32 != 0;
+    g_settings.wx_gps = tuple_int(t) != 0;
     seen = true;
   }
   if ((t = dict_find(iter, MESSAGE_KEY_THEME_MODE))) {
-    g_settings.theme_mode = t->value->int32;
+    g_settings.theme_mode = tuple_int(t);
     seen = true;
   }
   if ((t = dict_find(iter, MESSAGE_KEY_THEME_SEL))) {
-    g_settings.theme_manual = t->value->int32;
+    g_settings.theme_manual = tuple_int(t);
     seen = true;
   }
   if ((t = dict_find(iter, MESSAGE_KEY_THEME_DAY))) {
-    g_settings.theme_day = t->value->int32;
+    g_settings.theme_day = tuple_int(t);
     seen = true;
   }
   if ((t = dict_find(iter, MESSAGE_KEY_THEME_NIGHT))) {
-    g_settings.theme_night = t->value->int32;
+    g_settings.theme_night = tuple_int(t);
     seen = true;
   }
   if ((t = dict_find(iter, MESSAGE_KEY_DAY_START))) {
-    g_settings.day_start = t->value->int32;
+    g_settings.day_start = tuple_int(t);
     seen = true;
   }
   if ((t = dict_find(iter, MESSAGE_KEY_NIGHT_START))) {
-    g_settings.night_start = t->value->int32;
+    g_settings.night_start = tuple_int(t);
     seen = true;
   }
   if ((t = dict_find(iter, MESSAGE_KEY_SHOW_SECONDS))) {
-    g_settings.show_seconds = t->value->int32 != 0;
+    g_settings.show_seconds = tuple_int(t) != 0;
     seen = true;
   }
   if ((t = dict_find(iter, MESSAGE_KEY_SHOW_CITY))) {
-    g_settings.show_city = t->value->int32 != 0;
+    g_settings.show_city = tuple_int(t) != 0;
     seen = true;
   }
   if ((t = dict_find(iter, MESSAGE_KEY_SLOT_LEFT))) {
-    g_settings.slot_left = t->value->int32;
+    g_settings.slot_left = tuple_int(t);
     seen = true;
   }
   if ((t = dict_find(iter, MESSAGE_KEY_SLOT_RIGHT))) {
-    g_settings.slot_right = t->value->int32;
+    g_settings.slot_right = tuple_int(t);
     seen = true;
   }
   if ((t = dict_find(iter, MESSAGE_KEY_USE_CELSIUS))) {
-    g_settings.use_celsius = t->value->int32 != 0;
+    g_settings.use_celsius = tuple_int(t) != 0;
     seen = true;
   }
   if ((t = dict_find(iter, MESSAGE_KEY_STEP_GOAL))) {
-    g_settings.step_goal = t->value->int32;
+    g_settings.step_goal = tuple_int(t);
     seen = true;
   }
 

@@ -52,6 +52,8 @@ static GFont s_font_dseg50, s_font_dseg42, s_font_dseg22, s_font_tech18,
              s_font_tech16, s_font_tech14, s_font_tech11, s_font_tech8;
 static GBitmap *s_stipple;
 static GColor s_stipple_palette[2];
+static GBitmap *s_hatch;
+static GColor s_hatch_palette[2];
 
 static struct tm s_now;
 static int s_battery_pct = 100;
@@ -99,6 +101,7 @@ static void refresh_theme(void) {
   if (next == T) return;
   T = next;
   s_stipple_palette[1] = T->mute;
+  s_hatch_palette[1] = T->bg;
   if (!s_bg_layer) return; // before window_load — nothing to redraw yet
   layer_mark_dirty(s_bg_layer);
   layer_mark_dirty(s_header_layer);
@@ -145,6 +148,28 @@ static void stipple_create(void) {
       row[x / 8] |= 0x80 >> (x % 8);
     }
   }
+}
+
+// Unlit 7-segment "ghosts" get a checkerboard of bg-colored dots blitted
+// over them — halves their intensity with an LCD-like hatch texture.
+// One 8x8 tile, tiled across the target rect by the renderer.
+static void hatch_create(void) {
+  s_hatch_palette[0] = GColorClear;
+  s_hatch_palette[1] = T->bg;
+  s_hatch = gbitmap_create_blank_with_palette(
+      GSize(8, 8), GBitmapFormat1BitPalette, s_hatch_palette, false);
+  if (!s_hatch) return;
+  uint8_t *data = gbitmap_get_data(s_hatch);
+  uint16_t stride = gbitmap_get_bytes_per_row(s_hatch);
+  for (int y = 0; y < 8; y++) {
+    data[y * stride] = (y % 2 == 0) ? 0xAA : 0x55; // 1px checkerboard
+  }
+}
+
+static void hatch_rect(GContext *ctx, GRect r) {
+  if (!s_hatch) return;
+  graphics_context_set_compositing_mode(ctx, GCompOpSet);
+  graphics_draw_bitmap_in_rect(ctx, s_hatch, r);
 }
 
 static void bg_update_proc(Layer *layer, GContext *ctx) {
@@ -277,12 +302,21 @@ static void time_update_proc(Layer *layer, GContext *ctx) {
   if (x < 2) x = 2;
   int y = (b.size.h - d2.h) / 2;
 
-  // Ghost (unlit) segments behind the lit digits.
+  int sec_x = x + d2.w * 2 + colon.w + 2;
+  int sec_y = y + d2.h - sec2.h - 2;
+
+  // Ghost (unlit) segments first, then the hatch dims them all at once,
+  // then the lit digits go on top untouched.
   draw_text(ctx, "88", tf, T->ghost, GRect(x, y, d2.w + 2, d2.h + 2));
   draw_text(ctx, ":", tf, T->ghost,
             GRect(x + d2.w, y, colon.w + 2, d2.h + 2));
   draw_text(ctx, "88", tf, T->ghost,
             GRect(x + d2.w + colon.w, y, d2.w + 2, d2.h + 2));
+  if (inline_sec) {
+    draw_text(ctx, "88", s_font_dseg22, T->ghost,
+              GRect(sec_x, sec_y, sec2.w + 2, sec2.h + 2));
+  }
+  hatch_rect(ctx, GRect(x, y, total_w + 2, d2.h + 2));
 
   // Lit digits. Colon blinks at the design's 0.5 Hz cycle whenever
   // seconds tick somewhere (steady on minute-only wakeups).
@@ -297,13 +331,9 @@ static void time_update_proc(Layer *layer, GContext *ctx) {
   if (!inline_sec) return;
 
   // Seconds column: SEC label over accent digits, bottom-aligned with HH:MM.
-  int sec_x = x + d2.w * 2 + colon.w + 2;
-  int sec_y = y + d2.h - sec2.h - 2;
   draw_text(ctx, "SEC", s_font_tech8, T->mute,
             GRect(sec_x, sec_y - sec_label.h - 2, sec_label.w + 2,
                   sec_label.h + 2));
-  draw_text(ctx, "88", s_font_dseg22, T->ghost,
-            GRect(sec_x, sec_y, sec2.w + 2, sec2.h + 2));
   draw_text(ctx, ss, s_font_dseg22, T->accent,
             GRect(sec_x, sec_y, sec2.w + 2, sec2.h + 2));
 }
@@ -469,6 +499,7 @@ static void draw_seconds_section(GContext *ctx, GRect area, int label_y,
   int sx = area.origin.x + (area.size.w - sec2.w) / 2;
   draw_text(ctx, "88", s_font_dseg22, T->ghost,
             GRect(sx, value_y, sec2.w + 2, sec2.h + 2));
+  hatch_rect(ctx, GRect(sx, value_y, sec2.w + 2, sec2.h + 2));
   draw_text(ctx, ss, s_font_dseg22, T->accent,
             GRect(sx, value_y, sec2.w + 2, sec2.h + 2));
 }
@@ -629,6 +660,7 @@ static void window_load(Window *window) {
       resource_get_handle(RESOURCE_ID_FONT_TECH_8));
 
   stipple_create();
+  hatch_create();
 
   s_bg_layer = layer_create(GRect(0, 0, SCREEN_W, SCREEN_H));
   layer_set_update_proc(s_bg_layer, bg_update_proc);
@@ -676,6 +708,7 @@ static void window_unload(Window *window) {
   fonts_unload_custom_font(s_font_tech11);
   fonts_unload_custom_font(s_font_tech8);
   if (s_stipple) gbitmap_destroy(s_stipple);
+  if (s_hatch) gbitmap_destroy(s_hatch);
 }
 
 static void init(void) {

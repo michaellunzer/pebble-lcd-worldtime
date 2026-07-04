@@ -7,9 +7,10 @@
 
 var Clay = require('pebble-clay');
 var clayConfig = require('./config');
+var customClay = require('./custom-clay');
 var messageKeys = require('message_keys');
 
-var clay = new Clay(clayConfig, null, { autoHandleEvents: false });
+var clay = new Clay(clayConfig, customClay, { autoHandleEvents: false });
 
 var REFRESH_MS = 30 * 60 * 1000;
 
@@ -113,6 +114,12 @@ Pebble.addEventListener('webviewclosed', function (e) {
   var tag = String(dict[messageKeys.CITY_TAG] || '')
     .toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 3);
   dict[messageKeys.CITY_TAG] = tag || 'SF';
+
+  // Clay select values are strings — the watch expects ints.
+  ['THEME_MODE', 'THEME_SEL', 'THEME_DAY', 'THEME_NIGHT',
+   'SLOT_LEFT', 'SLOT_RIGHT'].forEach(function (k) {
+    dict[messageKeys[k]] = parseInt(dict[messageKeys[k]], 10) || 0;
+  });
 
   prefs = {
     celsius: !!Number(dict[messageKeys.USE_CELSIUS]),
