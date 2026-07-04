@@ -24,7 +24,7 @@ of truth for the layout.
 | Header | 10 | 18 | day-of-week + date (16px, full month when it fits), optional city tag, AM/PM (accent) |
 | Battery | 32 | 6 | 20 segments (unlit in ghost), accent ≤ 20 % |
 | Time | 42 | hugs digits | framed box (full 188px width), DSEG7 42px digits + 22px seconds — or 50px digits alone when seconds are off/moved to a slot |
-| Map | below time | remainder | 60 × 19 dot grid, solar terminator, home-location dot |
+| Map | below time | remainder | 60 × 19 dot grid, solar terminator, yellow sun marker, accent home dot |
 | Footer | 172 | 50 | two configurable slots: weather · steps · heart rate · seconds · empty |
 
 Screen padding 6 px; content inset to x = 10, width 180. The LCD stipple
@@ -64,8 +64,9 @@ on the watch.
   (the other strips keep the 180 px column) — the largest sizes DSEG7's
   advance allows on the pixel grid. The box height hugs the digits and
   the map absorbs the leftover space.
-- **No subsolar sun marker**: the sun's position reads through the
-  day/night shading; the only map marker is the home-location dot.
+- **The sun marker has its own color** (yellow, per-theme `sun` entry)
+  and is larger than the accent home-location dot, so the two map
+  markers never read as the same thing.
 - **Header text is 16 px** with the full month name, falling back to the
   3-letter month when a long month plus the city box won't fit.
 - Font resource names must not contain digits before the size — the SDK's

@@ -14,10 +14,12 @@ typedef struct {
   GColor bg;      // face substrate
   GColor ink;     // primary foreground
   GColor mute;    // secondary foreground (55%-ink in the prototype)
-  GColor accent;  // single accent: AM/PM, sun marker, step bar, low battery
+  GColor accent;  // single accent: AM/PM, home dot, step bar, low battery
   GColor ghost;   // unlit 7-segment shadow behind the digits
   GColor paper;   // map background
   GColor frame;   // box/frame lines
+  GColor sun;     // subsolar sun marker — distinct from accent so the
+                  // sun and the home dot never read as the same thing
 } Theme;
 
 typedef enum {
@@ -37,6 +39,7 @@ static const Theme THEMES[THEME_COUNT] = {
     .ghost  = {GColorLightGrayARGB8},
     .paper  = {GColorBrassARGB8},
     .frame  = {GColorBlackARGB8},
+    .sun    = {GColorChromeYellowARGB8}, // #FFAA00, pops on the tan face
   },
   [THEME_NEGATIVE] = {
     .bg     = {GColorBlackARGB8},
@@ -46,6 +49,7 @@ static const Theme THEMES[THEME_COUNT] = {
     .ghost  = {GColorDarkGrayARGB8},
     .paper  = {GColorBlackARGB8},
     .frame  = {GColorLightGrayARGB8},
+    .sun    = {GColorYellowARGB8},       // #FFFF00, bright on black
   },
   [THEME_MONO] = {
     .bg     = {GColorWhiteARGB8},
@@ -55,6 +59,7 @@ static const Theme THEMES[THEME_COUNT] = {
     .ghost  = {GColorLightGrayARGB8},
     .paper  = {GColorWhiteARGB8},
     .frame  = {GColorBlackARGB8},
+    .sun    = {GColorBlackARGB8},        // mono stays ink-only
   },
   [THEME_ACCENT] = {
     .bg     = {GColorBlackARGB8},
@@ -64,6 +69,7 @@ static const Theme THEMES[THEME_COUNT] = {
     .ghost  = {GColorDarkGrayARGB8},
     .paper  = {GColorBlackARGB8},
     .frame  = {GColorCadetBlueARGB8},
+    .sun    = {GColorYellowARGB8},       // #FFFF00, bright on black
   },
 };
 

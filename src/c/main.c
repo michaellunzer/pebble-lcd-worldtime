@@ -314,7 +314,7 @@ static void map_update_proc(Layer *layer, GContext *ctx) {
   GRect b = layer_get_bounds(layer);
   time_t now = time(NULL);
   struct tm utc = *gmtime(&now);
-  world_map_draw(ctx, b, &utc, T->ink, T->mute, T->accent, T->bg,
+  world_map_draw(ctx, b, &utc, T->ink, T->mute, T->accent, T->bg, T->sun,
                  g_settings.show_dot, g_settings.loc_lat_x100,
                  g_settings.loc_lon_x100);
 }
