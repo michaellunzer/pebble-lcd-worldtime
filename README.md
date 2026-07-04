@@ -7,13 +7,13 @@ of truth for the layout.
 
 ```
 ┌──────────────────────────────┐
-│ THU 14 MAY        [SF]  PM   │  header 18px
-│ ▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯         │  battery bar 6px (20 segments)
+│ THU 14 MAY        [SF]  PM   │  header 18px (16px type, full month)
+│ ▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯         │  battery bar 6px (20 segments + ghost)
 │ ┌──────────────────────────┐ │
-│ │  02:32  ³²SEC            │ │  time box 76px, DSEG7 42px + ghost
-│ └──────────────────────────┘ │
-│ ▓▓░ dot-matrix world map ░▓▓ │  46px, live day/night terminator
-│  WEATHER      │      STEPS   │  footer: icon+°F+H/L · count+bar
+│ │  02:32  ³²SEC            │ │  time box hugs digits: 42px (+22px
+│ └──────────────────────────┘ │  seconds) or 50px when seconds move
+│ ▓▓░ dot-matrix world map ░▓▓ │  map takes the rest, day/night shading
+│  WEATHER      │      STEPS   │  two slots: weather/steps/heart/sec
 └──────────────────────────────┘
 ```
 
@@ -21,11 +21,11 @@ of truth for the layout.
 
 | Strip | Y | Height | Content |
 |---|---|---|---|
-| Header | 10 | 18 | day-of-week, date, city tag, AM/PM (accent) |
-| Battery | 32 | 6 | 20 segments, outline = 100 %, accent ≤ 20 % |
-| Time | 42 | 76 | framed box (full 188px width), DSEG7 42px digits over ghost segments, blinking colon, accent 22px seconds |
-| Map | 122 | 46 | 60 × 19 dot grid, solar terminator, subsolar marker |
-| Footer | 172 | 50 | WEATHER · STEPS with progress bar |
+| Header | 10 | 18 | day-of-week + date (16px, full month when it fits), optional city tag, AM/PM (accent) |
+| Battery | 32 | 6 | 20 segments (unlit in ghost), accent ≤ 20 % |
+| Time | 42 | hugs digits | framed box (full 188px width), DSEG7 42px digits + 22px seconds — or 50px digits alone when seconds are off/moved to a slot |
+| Map | below time | remainder | 60 × 19 dot grid, solar terminator, home-location dot |
+| Footer | 172 | 50 | two configurable slots: weather · steps · heart rate · seconds · empty |
 
 Screen padding 6 px; content inset to x = 10, width 180. The LCD stipple
 texture (prebuilt 1-bit bitmap, one blit per frame) covers the face and
@@ -36,16 +36,17 @@ stops at the time box edges, per the design.
 All user options live in a Clay configuration page (open the watchface's
 settings in the Pebble mobile app):
 
-- **Location** — city code shown in the header box, home-dot latitude /
-  longitude (drawn on the map), and whether weather uses the phone's GPS
-  or those fixed coordinates.
+- **Location** — city code shown in the header box (with a toggle to
+  hide the box), home-dot latitude / longitude (drawn on the map), and
+  whether weather uses the phone's GPS or those fixed coordinates.
 - **Theme** — one of the four LCD variants, either fixed or in **auto
   day/night mode**: pick a day theme and a night theme plus the hours
   they switch (defaults: positive 07:00–20:00, negative overnight).
-- **Display** — show/hide seconds (hiding them drops the face to
-  once-a-minute wakeups and saves battery), show/hide the weather and
-  steps sections (a solo section takes the full footer width), °F/°C,
-  and the step goal for the progress bar.
+- **Display** — seconds beside the time, and what each bottom box shows:
+  weather, steps, heart rate, seconds, or empty (a solo box takes the
+  full footer width). Putting seconds in a box hides the inline column
+  and grows the time to 50 px. With no seconds anywhere the face wakes
+  once a minute and saves battery. Plus °F/°C and the step goal.
 
 Settings are pushed over AppMessage (`src/c/settings.c`) and persisted
 on the watch.
@@ -58,13 +59,15 @@ on the watch.
   tones map to solid Light/DarkGray. All four themes are in
   `src/c/theme.h`; the active one is chosen at runtime from settings.
 - **Ghost segments** render as a solid light color rather than 8 % alpha.
-- **Header text is 14 px** (spec says 11): the prototype's CSS pixels
-  read larger than real pixels on the 200 px-wide LCD, so the header row
-  is bumped for legibility (city-tag box 11 px).
-- **Time digits are 42 px, seconds 22 px** (spec says 44/18): the time
-  box spans the full 188 px screen padding (the other strips keep the
-  180 px column) — the largest one-line HH:MM + seconds combo DSEG7's
-  advance allows on the pixel grid.
+- **Time digits are 42 px with inline 22 px seconds, 50 px without**
+  (spec says 44/18): the time box spans the full 188 px screen padding
+  (the other strips keep the 180 px column) — the largest sizes DSEG7's
+  advance allows on the pixel grid. The box height hugs the digits and
+  the map absorbs the leftover space.
+- **No subsolar sun marker**: the sun's position reads through the
+  day/night shading; the only map marker is the home-location dot.
+- **Header text is 16 px** with the full month name, falling back to the
+  3-letter month when a long month plus the city box won't fit.
 - Font resource names must not contain digits before the size — the SDK's
   fontgen takes the *first* number in the name as the pixel height
   (hence `FONT_LCD_40`, not `FONT_DSEG7_40`).

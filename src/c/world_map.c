@@ -116,18 +116,9 @@ void world_map_draw(GContext *ctx, GRect bounds, const struct tm *utc,
     }
   }
 
-  // --- Subsolar sun marker: accent disc + ink crosshair ---
-  // Column from longitude, row from declination (linear interp over rows).
-  int32_t sun_x = x0 + (int32_t)(((int64_t)(sublon_x100 + 18000) * w) / 36000);
-  int sun_y = lat_to_y(decl_x100 / 100, y0, h);
-
-  graphics_context_set_fill_color(ctx, accent);
-  graphics_fill_circle(ctx, GPoint(sun_x, sun_y), 3);
-  graphics_context_set_stroke_color(ctx, ink);
-  graphics_draw_line(ctx, GPoint(sun_x - 5, sun_y), GPoint(sun_x + 5, sun_y));
-  graphics_draw_line(ctx, GPoint(sun_x, sun_y - 5), GPoint(sun_x, sun_y + 5));
-
   // --- Home-location dot: bg ring under an accent disc ---
+  // (The sun's position shows only through the day/night shading — a
+  // second marker on the map read as clutter.)
   if (show_home) {
     int32_t hx = x0 + (int32_t)(((int64_t)(home_lon_x100 + 18000) * w) / 36000);
     int hy = lat_to_y(home_lat_x100 / 100, y0, h);

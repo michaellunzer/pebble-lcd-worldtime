@@ -19,8 +19,9 @@ static void settings_defaults(void) {
     .day_start = 7,
     .night_start = 20,
     .show_seconds = true,
-    .show_weather = true,
-    .show_steps = true,
+    .show_city = true,
+    .slot_left = SLOT_WEATHER,
+    .slot_right = SLOT_STEPS,
     .use_celsius = false,
     .step_goal = 10000,
   };
@@ -40,6 +41,8 @@ static void settings_sanitize(void) {
   if (g_settings.theme_night >= THEME_COUNT) g_settings.theme_night = 0;
   g_settings.day_start %= 24;
   g_settings.night_start %= 24;
+  if (g_settings.slot_left > SLOT_NONE) g_settings.slot_left = SLOT_WEATHER;
+  if (g_settings.slot_right > SLOT_NONE) g_settings.slot_right = SLOT_STEPS;
   if (g_settings.step_goal < 100) g_settings.step_goal = 10000;
 }
 
@@ -113,12 +116,16 @@ bool settings_apply_message(DictionaryIterator *iter) {
     g_settings.show_seconds = t->value->int32 != 0;
     seen = true;
   }
-  if ((t = dict_find(iter, MESSAGE_KEY_SHOW_WEATHER))) {
-    g_settings.show_weather = t->value->int32 != 0;
+  if ((t = dict_find(iter, MESSAGE_KEY_SHOW_CITY))) {
+    g_settings.show_city = t->value->int32 != 0;
     seen = true;
   }
-  if ((t = dict_find(iter, MESSAGE_KEY_SHOW_STEPS))) {
-    g_settings.show_steps = t->value->int32 != 0;
+  if ((t = dict_find(iter, MESSAGE_KEY_SLOT_LEFT))) {
+    g_settings.slot_left = t->value->int32;
+    seen = true;
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_SLOT_RIGHT))) {
+    g_settings.slot_right = t->value->int32;
     seen = true;
   }
   if ((t = dict_find(iter, MESSAGE_KEY_USE_CELSIUS))) {

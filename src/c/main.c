@@ -26,11 +26,10 @@
 #define BATT_TOP (HEADER_TOP + HEADER_H + 4) // 32
 #define BATT_H 6
 #define TIME_TOP (BATT_TOP + BATT_H + 4)     // 42
-#define TIME_H 76                             // ~1/3 of 228
-#define MAP_TOP (TIME_TOP + TIME_H + 4)      // 122
-#define MAP_H 46
-#define FOOTER_TOP (MAP_TOP + MAP_H + 4)     // 172
+#define FOOTER_TOP 172
 #define FOOTER_H (SCREEN_H - FOOTER_TOP - PAD) // 50
+// The time box height hugs the digits (42px or 50px + padding) and the
+// map absorbs whatever vertical space is left — see apply_layout().
 
 #define BATTERY_LOW_PCT 20
 #define STIPPLE_SPACING 3
@@ -49,19 +48,34 @@ static Window *s_window;
 static Layer *s_bg_layer, *s_header_layer, *s_battery_layer, *s_time_layer,
              *s_map_layer, *s_footer_layer;
 
-static GFont s_font_dseg42, s_font_dseg22, s_font_tech18, s_font_tech14,
-             s_font_tech11, s_font_tech8;
+static GFont s_font_dseg50, s_font_dseg42, s_font_dseg22, s_font_tech18,
+             s_font_tech16, s_font_tech14, s_font_tech11, s_font_tech8;
 static GBitmap *s_stipple;
 static GColor s_stipple_palette[2];
 
 static struct tm s_now;
 static int s_battery_pct = 100;
 static int s_steps = 0;
+static int s_heart_bpm = 0;
 // Weather defaults match the design's sample state until real data arrives.
 static int s_wx_temp = 68, s_wx_hi = 74, s_wx_lo = 55;
 static int s_wx_kind = WX_SUN;
 
 static const Theme *T = &THEMES[THEME_POSITIVE];
+
+static bool slot_has(uint8_t kind) {
+  return g_settings.slot_left == kind || g_settings.slot_right == kind;
+}
+
+// Seconds in a footer box win over the inline column: the time box
+// drops the column and the digits grow to 50px.
+static bool inline_seconds(void) {
+  return g_settings.show_seconds && !slot_has(SLOT_SECONDS);
+}
+
+static bool seconds_active(void) {
+  return g_settings.show_seconds || slot_has(SLOT_SECONDS);
+}
 
 // Resolves the theme from settings: manual pick, or in auto mode the
 // day/night theme by local hour (handles windows that wrap midnight).
@@ -155,39 +169,53 @@ static void header_update_proc(Layer *layer, GContext *ctx) {
   static const char *DOW[] = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
   static const char *MON[] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN",
                               "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"};
+  static const char *MONF[] = {"JANUARY", "FEBRUARY", "MARCH", "APRIL",
+                               "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER",
+                               "OCTOBER", "NOVEMBER", "DECEMBER"};
 
-  char date_buf[16];
-  snprintf(date_buf, sizeof(date_buf), "%02d %s", s_now.tm_mday,
-           MON[s_now.tm_mon]);
   const char *dow = DOW[s_now.tm_wday];
   const char *ampm = s_now.tm_hour >= 12 ? "PM" : "AM";
 
-  // 14px main row (the design's 11px reads too small on the real LCD).
-  GSize row_sz = text_size("00", s_font_tech14);
-  int text_y = (b.size.h - row_sz.h) / 2 - 1;
-
-  // Left: DOW (ink) + date (mute)
-  GSize dow_sz = text_size(dow, s_font_tech14);
-  draw_text(ctx, dow, s_font_tech14, T->ink,
-            GRect(0, text_y, dow_sz.w + 2, row_sz.h + 2));
-  draw_text(ctx, date_buf, s_font_tech14, T->mute,
-            GRect(dow_sz.w + 6, text_y, 90, row_sz.h + 2));
-
-  // Right: AM/PM in accent at the far edge, city tag box to its left.
+  // Right side first, so the date knows how much room it has.
   GSize ampm_sz = text_size(ampm, s_font_tech14);
+  int ampm_y = (b.size.h - ampm_sz.h) / 2 - 1;
   int ampm_x = b.size.w - ampm_sz.w;
   draw_text(ctx, ampm, s_font_tech14, T->accent,
-            GRect(ampm_x, text_y, ampm_sz.w + 1, row_sz.h + 2));
+            GRect(ampm_x, ampm_y, ampm_sz.w + 1, ampm_sz.h + 2));
 
-  const char *city = g_settings.city_tag;
-  GSize city_sz = text_size(city, s_font_tech11);
-  GRect city_box = GRect(ampm_x - city_sz.w - 14, text_y,
-                         city_sz.w + 8, city_sz.h + 4);
-  graphics_context_set_stroke_color(ctx, T->frame);
-  graphics_draw_rect(ctx, city_box);
-  draw_text(ctx, city, s_font_tech11, T->ink,
-            GRect(city_box.origin.x + 4, city_box.origin.y + 1,
-                  city_sz.w + 2, city_sz.h + 2));
+  int right_limit = ampm_x - 8;
+  if (g_settings.show_city) {
+    const char *city = g_settings.city_tag;
+    GSize city_sz = text_size(city, s_font_tech11);
+    GRect city_box = GRect(ampm_x - city_sz.w - 14,
+                           (b.size.h - city_sz.h - 4) / 2 - 1,
+                           city_sz.w + 8, city_sz.h + 4);
+    graphics_context_set_stroke_color(ctx, T->frame);
+    graphics_draw_rect(ctx, city_box);
+    draw_text(ctx, city, s_font_tech11, T->ink,
+              GRect(city_box.origin.x + 4, city_box.origin.y + 1,
+                    city_sz.w + 2, city_sz.h + 2));
+    right_limit = city_box.origin.x - 6;
+  }
+
+  // Left: DOW (ink) + date (mute) at 16px, with the full month name when
+  // it fits the remaining width (SEPTEMBER etc. fall back to 3 letters).
+  GSize row_sz = text_size("00", s_font_tech16);
+  int text_y = (b.size.h - row_sz.h) / 2 - 1;
+  GSize dow_sz = text_size(dow, s_font_tech16);
+  draw_text(ctx, dow, s_font_tech16, T->ink,
+            GRect(0, text_y, dow_sz.w + 2, row_sz.h + 2));
+
+  int date_x = dow_sz.w + 6;
+  char date_buf[16];
+  snprintf(date_buf, sizeof(date_buf), "%02d %s", s_now.tm_mday,
+           MONF[s_now.tm_mon]);
+  if (date_x + text_size(date_buf, s_font_tech16).w > right_limit) {
+    snprintf(date_buf, sizeof(date_buf), "%02d %s", s_now.tm_mday,
+             MON[s_now.tm_mon]);
+  }
+  draw_text(ctx, date_buf, s_font_tech16, T->mute,
+            GRect(date_x, text_y, right_limit - date_x, row_sz.h + 2));
 }
 
 // ---------------------------------------------------------------- battery
@@ -201,11 +229,13 @@ static void battery_update_proc(Layer *layer, GContext *ctx) {
   graphics_context_set_stroke_color(ctx, T->ink);
   graphics_draw_rect(ctx, b);
 
+  // Lit segments in ink (accent when low), unlit ones in ghost — without
+  // the ghost tail the bar read as decoration, not a gauge.
   int inner_w = b.size.w - 2;
-  graphics_context_set_fill_color(ctx, fill);
-  for (int i = 0; i < filled; i++) {
+  for (int i = 0; i < segs; i++) {
     int xs = 1 + i * inner_w / segs;
     int xe = 1 + (i + 1) * inner_w / segs;
+    graphics_context_set_fill_color(ctx, i < filled ? fill : T->ghost);
     graphics_fill_rect(ctx, GRect(xs + 1, 2, xe - xs - 1, b.size.h - 4),
                        0, GCornerNone);
   }
@@ -229,39 +259,42 @@ static void time_update_proc(Layer *layer, GContext *ctx) {
   snprintf(mm, sizeof(mm), "%02d", s_now.tm_min);
   snprintf(ss, sizeof(ss), "%02d", s_now.tm_sec);
 
+  // With the seconds column inline the digits max out at 42px; once the
+  // seconds move to a footer box (or off), HH:MM alone grows to 50px.
+  // The box height hugs whichever size is active (see apply_layout).
+  bool inline_sec = inline_seconds();
+  GFont tf = inline_sec ? s_font_dseg42 : s_font_dseg50;
+
   // Measure once per draw; DSEG7 is fixed-width so "88" == any digits.
-  GSize d2 = text_size("88", s_font_dseg42);       // HH or MM block
-  GSize colon = text_size(":", s_font_dseg42);
+  GSize d2 = text_size("88", tf);                  // HH or MM block
+  GSize colon = text_size(":", tf);
   GSize sec2 = text_size("88", s_font_dseg22);
   GSize sec_label = text_size("SEC", s_font_tech8);
 
-  // One line: HH:MM plus the seconds column. The box is widened to 188px
-  // (vs the 180px content column) so 42px digits and 22px seconds fit
-  // side by side — the largest combo the pixel grid allows.
   int total_w = d2.w * 2 + colon.w;
-  if (g_settings.show_seconds) total_w += 2 + sec2.w;
+  if (inline_sec) total_w += 2 + sec2.w;
   int x = (b.size.w - total_w) / 2;
   if (x < 2) x = 2;
   int y = (b.size.h - d2.h) / 2;
 
   // Ghost (unlit) segments behind the lit digits.
-  draw_text(ctx, "88", s_font_dseg42, T->ghost, GRect(x, y, d2.w + 2, d2.h + 2));
-  draw_text(ctx, ":", s_font_dseg42, T->ghost,
+  draw_text(ctx, "88", tf, T->ghost, GRect(x, y, d2.w + 2, d2.h + 2));
+  draw_text(ctx, ":", tf, T->ghost,
             GRect(x + d2.w, y, colon.w + 2, d2.h + 2));
-  draw_text(ctx, "88", s_font_dseg42, T->ghost,
+  draw_text(ctx, "88", tf, T->ghost,
             GRect(x + d2.w + colon.w, y, d2.w + 2, d2.h + 2));
 
-  // Lit digits. Colon blinks at the design's 0.5 Hz cycle (steady when
-  // seconds are off — the face only redraws once a minute then).
-  draw_text(ctx, hh, s_font_dseg42, T->ink, GRect(x, y, d2.w + 2, d2.h + 2));
-  if (!g_settings.show_seconds || s_now.tm_sec % 2 == 0) {
-    draw_text(ctx, ":", s_font_dseg42, T->ink,
+  // Lit digits. Colon blinks at the design's 0.5 Hz cycle whenever
+  // seconds tick somewhere (steady on minute-only wakeups).
+  draw_text(ctx, hh, tf, T->ink, GRect(x, y, d2.w + 2, d2.h + 2));
+  if (!seconds_active() || s_now.tm_sec % 2 == 0) {
+    draw_text(ctx, ":", tf, T->ink,
               GRect(x + d2.w, y, colon.w + 2, d2.h + 2));
   }
-  draw_text(ctx, mm, s_font_dseg42, T->ink,
+  draw_text(ctx, mm, tf, T->ink,
             GRect(x + d2.w + colon.w, y, d2.w + 2, d2.h + 2));
 
-  if (!g_settings.show_seconds) return;
+  if (!inline_sec) return;
 
   // Seconds column: SEC label over accent digits, bottom-aligned with HH:MM.
   int sec_x = x + d2.w * 2 + colon.w + 2;
@@ -340,7 +373,7 @@ static void draw_weather_section(GContext *ctx, GRect area, int label_y,
             GRect(area.origin.x + (area.size.w - w.w) / 2, label_y,
                   w.w + 2, w.h + 2));
 
-  char temp_buf[8];
+  char temp_buf[16];
   snprintf(temp_buf, sizeof(temp_buf), "%d°", s_wx_temp);
   GSize temp_sz = text_size(temp_buf, s_font_tech18);
   int group_w = 18 + 4 + temp_sz.w;
@@ -373,7 +406,7 @@ static void draw_steps_section(GContext *ctx, GRect area, int label_y,
             GRect(area.origin.x + (area.size.w - w.w) / 2, label_y,
                   w.w + 2, w.h + 2));
 
-  char steps_buf[12];
+  char steps_buf[16];
   if (s_steps >= 1000) {
     snprintf(steps_buf, sizeof(steps_buf), "%d,%03d", s_steps / 1000,
              s_steps % 1000);
@@ -399,35 +432,97 @@ static void draw_steps_section(GContext *ctx, GRect area, int label_y,
   graphics_fill_rect(ctx, GRect(bx + 1, by + 1, fill_w, 2), 0, GCornerNone);
 }
 
+static void draw_heart_section(GContext *ctx, GRect area, int label_y,
+                               int value_y) {
+  GSize w = text_size("HEART", s_font_tech8);
+  draw_text(ctx, "HEART", s_font_tech8, T->mute,
+            GRect(area.origin.x + (area.size.w - w.w) / 2, label_y,
+                  w.w + 2, w.h + 2));
+
+  char buf[8];
+  if (s_heart_bpm > 0) {
+    snprintf(buf, sizeof(buf), "%d", s_heart_bpm);
+  } else {
+    strcpy(buf, "--");
+  }
+  GSize v_sz = text_size(buf, s_font_tech18);
+  draw_text(ctx, buf, s_font_tech18, T->ink,
+            GRect(area.origin.x + (area.size.w - v_sz.w) / 2, value_y,
+                  v_sz.w + 2, v_sz.h + 2));
+
+  GSize u_sz = text_size("BPM", s_font_tech8);
+  draw_text(ctx, "BPM", s_font_tech8, T->accent,
+            GRect(area.origin.x + (area.size.w - u_sz.w) / 2,
+                  value_y + v_sz.h + 3, u_sz.w + 2, u_sz.h + 2));
+}
+
+static void draw_seconds_section(GContext *ctx, GRect area, int label_y,
+                                 int value_y) {
+  GSize w = text_size("SECONDS", s_font_tech8);
+  draw_text(ctx, "SECONDS", s_font_tech8, T->mute,
+            GRect(area.origin.x + (area.size.w - w.w) / 2, label_y,
+                  w.w + 2, w.h + 2));
+
+  char ss[4];
+  snprintf(ss, sizeof(ss), "%02d", s_now.tm_sec);
+  GSize sec2 = text_size("88", s_font_dseg22);
+  int sx = area.origin.x + (area.size.w - sec2.w) / 2;
+  draw_text(ctx, "88", s_font_dseg22, T->ghost,
+            GRect(sx, value_y, sec2.w + 2, sec2.h + 2));
+  draw_text(ctx, ss, s_font_dseg22, T->accent,
+            GRect(sx, value_y, sec2.w + 2, sec2.h + 2));
+}
+
+static void draw_slot(GContext *ctx, uint8_t kind, GRect area, int label_y,
+                      int value_y) {
+  switch (kind) {
+    case SLOT_WEATHER: draw_weather_section(ctx, area, label_y, value_y); break;
+    case SLOT_STEPS:   draw_steps_section(ctx, area, label_y, value_y); break;
+    case SLOT_HEART:   draw_heart_section(ctx, area, label_y, value_y); break;
+    case SLOT_SECONDS: draw_seconds_section(ctx, area, label_y, value_y); break;
+    default: break; // SLOT_NONE
+  }
+}
+
 static void footer_update_proc(Layer *layer, GContext *ctx) {
   GRect b = layer_get_bounds(layer);
-  bool wx = g_settings.show_weather, st = g_settings.show_steps;
-  if (!wx && !st) return;
+  uint8_t l = g_settings.slot_left, r = g_settings.slot_right;
+  if (l == SLOT_NONE && r == SLOT_NONE) return;
 
   GSize label_sz = text_size("WEATHER", s_font_tech8);
   int label_y = 2;
   int value_y = label_y + label_sz.h + 4;
   int half = b.size.w / 2;
 
-  if (wx && st) {
+  if (l != SLOT_NONE && r != SLOT_NONE) {
     graphics_context_set_stroke_color(ctx, T->mute);
     graphics_draw_line(ctx, GPoint(half, 2), GPoint(half, b.size.h - 2));
-    draw_weather_section(ctx, GRect(0, 0, half, b.size.h), label_y, value_y);
-    draw_steps_section(ctx, GRect(half, 0, half, b.size.h), label_y, value_y);
-  } else if (wx) {
-    draw_weather_section(ctx, GRect(0, 0, b.size.w, b.size.h), label_y,
-                         value_y);
+    draw_slot(ctx, l, GRect(0, 0, half, b.size.h), label_y, value_y);
+    draw_slot(ctx, r, GRect(half, 0, half, b.size.h), label_y, value_y);
   } else {
-    draw_steps_section(ctx, GRect(0, 0, b.size.w, b.size.h), label_y,
-                       value_y);
+    draw_slot(ctx, l != SLOT_NONE ? l : r, GRect(0, 0, b.size.w, b.size.h),
+              label_y, value_y);
   }
 }
 
 // --------------------------------------------------------------- services
 
+// The time box hugs its digits (42px inline-seconds / 50px without) and
+// the map absorbs the leftover vertical space between it and the footer.
+static void apply_layout(void) {
+  GFont tf = inline_seconds() ? s_font_dseg42 : s_font_dseg50;
+  int time_h = text_size("88", tf).h + 12;
+  layer_set_frame(s_time_layer,
+                  GRect(PAD, TIME_TOP, SCREEN_W - 2 * PAD, time_h));
+  int map_top = TIME_TOP + time_h + 4;
+  layer_set_frame(s_map_layer,
+                  GRect(INNER_X, map_top, INNER_W, FOOTER_TOP - 4 - map_top));
+}
+
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   s_now = *tick_time;
   layer_mark_dirty(s_time_layer);
+  if (slot_has(SLOT_SECONDS)) layer_mark_dirty(s_footer_layer);
   if (units_changed & MINUTE_UNIT) {
     layer_mark_dirty(s_header_layer);
     layer_mark_dirty(s_map_layer);
@@ -435,11 +530,11 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   }
 }
 
-// Seconds display needs SECOND_UNIT; without it a once-a-minute wake
+// Any visible seconds need SECOND_UNIT; otherwise a once-a-minute wake
 // is enough (and much kinder to the battery).
 static void update_tick_subscription(void) {
   tick_timer_service_subscribe(
-      g_settings.show_seconds ? SECOND_UNIT : MINUTE_UNIT, tick_handler);
+      seconds_active() ? SECOND_UNIT : MINUTE_UNIT, tick_handler);
 }
 
 static void battery_handler(BatteryChargeState state) {
@@ -459,10 +554,24 @@ static void update_steps(void) {
   }
 }
 
+static void update_heart(void) {
+  time_t now = time(NULL);
+  if (health_service_metric_accessible(HealthMetricHeartRateBPM, now, now) &
+      HealthServiceAccessibilityMaskAvailable) {
+    s_heart_bpm = (int)health_service_peek_current_value(
+        HealthMetricHeartRateBPM);
+    layer_mark_dirty(s_footer_layer);
+  }
+}
+
 static void health_handler(HealthEventType event, void *context) {
   if (event == HealthEventSignificantUpdate ||
       event == HealthEventMovementUpdate) {
     update_steps();
+  }
+  if (event == HealthEventHeartRateUpdate ||
+      event == HealthEventSignificantUpdate) {
+    update_heart();
   }
 }
 #endif
@@ -489,6 +598,7 @@ static void inbox_received(DictionaryIterator *iter, void *context) {
   if (settings_apply_message(iter)) {
     update_tick_subscription();
     refresh_theme();
+    apply_layout(); // seconds may have moved: time/map frames change
     layer_mark_dirty(s_header_layer);
     layer_mark_dirty(s_time_layer);
     layer_mark_dirty(s_map_layer);
@@ -501,12 +611,16 @@ static void inbox_received(DictionaryIterator *iter, void *context) {
 static void window_load(Window *window) {
   Layer *root = window_get_root_layer(window);
 
+  s_font_dseg50 = fonts_load_custom_font(
+      resource_get_handle(RESOURCE_ID_FONT_LCD_50));
   s_font_dseg42 = fonts_load_custom_font(
       resource_get_handle(RESOURCE_ID_FONT_LCD_42));
   s_font_dseg22 = fonts_load_custom_font(
       resource_get_handle(RESOURCE_ID_FONT_LCD_22));
   s_font_tech18 = fonts_load_custom_font(
       resource_get_handle(RESOURCE_ID_FONT_TECH_18));
+  s_font_tech16 = fonts_load_custom_font(
+      resource_get_handle(RESOURCE_ID_FONT_TECH_16));
   s_font_tech14 = fonts_load_custom_font(
       resource_get_handle(RESOURCE_ID_FONT_TECH_14));
   s_font_tech11 = fonts_load_custom_font(
@@ -530,17 +644,20 @@ static void window_load(Window *window) {
 
   // Full-bleed to the screen padding (188px vs the 180px content column)
   // to buy the extra width the one-line time + seconds layout needs.
-  s_time_layer = layer_create(GRect(PAD, TIME_TOP, SCREEN_W - 2 * PAD, TIME_H));
+  // Frames for the time and map layers are set by apply_layout().
+  s_time_layer = layer_create(GRect(PAD, TIME_TOP, SCREEN_W - 2 * PAD, 10));
   layer_set_update_proc(s_time_layer, time_update_proc);
   layer_add_child(root, s_time_layer);
 
-  s_map_layer = layer_create(GRect(INNER_X, MAP_TOP, INNER_W, MAP_H));
+  s_map_layer = layer_create(GRect(INNER_X, TIME_TOP, INNER_W, 10));
   layer_set_update_proc(s_map_layer, map_update_proc);
   layer_add_child(root, s_map_layer);
 
   s_footer_layer = layer_create(GRect(INNER_X, FOOTER_TOP, INNER_W, FOOTER_H));
   layer_set_update_proc(s_footer_layer, footer_update_proc);
   layer_add_child(root, s_footer_layer);
+
+  apply_layout();
 }
 
 static void window_unload(Window *window) {
@@ -550,9 +667,11 @@ static void window_unload(Window *window) {
   layer_destroy(s_time_layer);
   layer_destroy(s_map_layer);
   layer_destroy(s_footer_layer);
+  fonts_unload_custom_font(s_font_dseg50);
   fonts_unload_custom_font(s_font_dseg42);
   fonts_unload_custom_font(s_font_dseg22);
   fonts_unload_custom_font(s_font_tech18);
+  fonts_unload_custom_font(s_font_tech16);
   fonts_unload_custom_font(s_font_tech14);
   fonts_unload_custom_font(s_font_tech11);
   fonts_unload_custom_font(s_font_tech8);
@@ -588,6 +707,7 @@ static void init(void) {
 #if defined(PBL_HEALTH)
   health_service_events_subscribe(health_handler, NULL);
   update_steps();
+  update_heart();
 #endif
 
   app_message_register_inbox_received(inbox_received);
@@ -607,5 +727,6 @@ static void deinit(void) {
 int main(void) {
   init();
   app_event_loop();
+  deinit();
   return 0;
 }

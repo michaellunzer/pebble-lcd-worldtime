@@ -30,6 +30,12 @@ module.exports = [
         attributes: { limit: 3, placeholder: 'SF' }
       },
       {
+        type: 'toggle',
+        messageKey: 'SHOW_CITY',
+        defaultValue: true,
+        label: 'Show city code box'
+      },
+      {
         type: 'input',
         messageKey: 'LOC_LAT',
         defaultValue: '37.77',
@@ -123,20 +129,36 @@ module.exports = [
         type: 'toggle',
         messageKey: 'SHOW_SECONDS',
         defaultValue: true,
-        label: 'Show seconds',
-        description: 'Off saves battery: the face only wakes once a minute.'
+        label: 'Seconds beside the time',
+        description: 'Ignored when a bottom box shows seconds — the time ' +
+          'grows to full width instead. All seconds off = once-a-minute ' +
+          'wakeups and better battery.'
       },
       {
-        type: 'toggle',
-        messageKey: 'SHOW_WEATHER',
-        defaultValue: true,
-        label: 'Show weather'
+        type: 'select',
+        messageKey: 'SLOT_LEFT',
+        defaultValue: '0',
+        label: 'Bottom left box',
+        options: [
+          { label: 'Weather', value: '0' },
+          { label: 'Steps', value: '1' },
+          { label: 'Heart rate', value: '2' },
+          { label: 'Seconds', value: '3' },
+          { label: 'Empty', value: '4' }
+        ]
       },
       {
-        type: 'toggle',
-        messageKey: 'SHOW_STEPS',
-        defaultValue: true,
-        label: 'Show steps'
+        type: 'select',
+        messageKey: 'SLOT_RIGHT',
+        defaultValue: '1',
+        label: 'Bottom right box',
+        options: [
+          { label: 'Weather', value: '0' },
+          { label: 'Steps', value: '1' },
+          { label: 'Heart rate', value: '2' },
+          { label: 'Seconds', value: '3' },
+          { label: 'Empty', value: '4' }
+        ]
       },
       {
         type: 'toggle',

@@ -33,13 +33,20 @@
       "DAY_START",
       "NIGHT_START",
       "SHOW_SECONDS",
-      "SHOW_WEATHER",
-      "SHOW_STEPS",
+      "SHOW_CITY",
+      "SLOT_LEFT",
+      "SLOT_RIGHT",
       "USE_CELSIUS",
       "STEP_GOAL"
     ],
     "resources": {
       "media": [
+        {
+          "type": "font",
+          "name": "FONT_LCD_50",
+          "file": "fonts/DSEG7Classic-Bold.ttf",
+          "characterRegex": "[0-9:]"
+        },
         {
           "type": "font",
           "name": "FONT_LCD_42",
@@ -56,7 +63,13 @@
           "type": "font",
           "name": "FONT_TECH_18",
           "file": "fonts/ShareTechMono-Regular.ttf",
-          "characterRegex": "[0-9,°]"
+          "characterRegex": "[0-9,°-]"
+        },
+        {
+          "type": "font",
+          "name": "FONT_TECH_16",
+          "file": "fonts/ShareTechMono-Regular.ttf",
+          "characterRegex": "[A-Z0-9 ]"
         },
         {
           "type": "font",

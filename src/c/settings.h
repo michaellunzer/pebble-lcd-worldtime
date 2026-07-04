@@ -10,6 +10,15 @@ enum ThemeMode {
   THEME_MODE_AUTO = 1, // day/night themes switch on the hours below
 };
 
+// What a footer box (slot) displays.
+enum SlotKind {
+  SLOT_WEATHER = 0,
+  SLOT_STEPS = 1,
+  SLOT_HEART = 2,
+  SLOT_SECONDS = 3,
+  SLOT_NONE = 4,
+};
+
 typedef struct {
   char city_tag[4];      // 1-3 chars shown in the header box
   int32_t loc_lat_x100;  // home dot, centi-degrees (+N)
@@ -22,9 +31,10 @@ typedef struct {
   uint8_t theme_night;   // ThemeId in auto mode, night hours
   uint8_t day_start;     // hour the day theme takes over (0-23)
   uint8_t night_start;   // hour the night theme takes over (0-23)
-  bool show_seconds;     // seconds column + blinking colon (SECOND_UNIT)
-  bool show_weather;
-  bool show_steps;
+  bool show_seconds;     // seconds column beside the time (SECOND_UNIT)
+  bool show_city;        // city-code box in the header
+  uint8_t slot_left;     // SlotKind for the bottom-left box
+  uint8_t slot_right;    // SlotKind for the bottom-right box
   bool use_celsius;      // display unit; pkjs fetches accordingly
   int32_t step_goal;
 } Settings;
