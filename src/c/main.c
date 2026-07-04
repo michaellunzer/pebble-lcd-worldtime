@@ -48,8 +48,9 @@ static Window *s_window;
 static Layer *s_bg_layer, *s_header_layer, *s_battery_layer, *s_time_layer,
              *s_map_layer, *s_footer_layer;
 
-static GFont s_font_dseg50, s_font_dseg42, s_font_dseg22, s_font_tech18,
-             s_font_tech16, s_font_tech14, s_font_tech11, s_font_tech8;
+static GFont s_font_dseg50, s_font_dseg42, s_font_dseg28, s_font_dseg22,
+             s_font_tech24, s_font_tech16, s_font_tech14, s_font_tech11,
+             s_font_tech8;
 static GBitmap *s_stipple;
 static GColor s_stipple_palette[2];
 static GBitmap *s_hatch;
@@ -398,41 +399,41 @@ static void draw_weather_icon(GContext *ctx, GPoint c, int kind) {
 // column (both sections on) or the full width (only one section on).
 static void draw_weather_section(GContext *ctx, GRect area, int label_y,
                                  int value_y) {
-  GSize w = text_size("WEATHER", s_font_tech8);
-  draw_text(ctx, "WEATHER", s_font_tech8, T->mute,
+  GSize w = text_size("WEATHER", s_font_tech11);
+  draw_text(ctx, "WEATHER", s_font_tech11, T->mute,
             GRect(area.origin.x + (area.size.w - w.w) / 2, label_y,
                   w.w + 2, w.h + 2));
 
   char temp_buf[16];
   snprintf(temp_buf, sizeof(temp_buf), "%d°", s_wx_temp);
-  GSize temp_sz = text_size(temp_buf, s_font_tech18);
+  GSize temp_sz = text_size(temp_buf, s_font_tech24);
   int group_w = 18 + 4 + temp_sz.w;
   int gx = area.origin.x + (area.size.w - group_w) / 2;
   draw_weather_icon(ctx, GPoint(gx + 9, value_y + temp_sz.h / 2), s_wx_kind);
-  draw_text(ctx, temp_buf, s_font_tech18, T->ink,
+  draw_text(ctx, temp_buf, s_font_tech24, T->ink,
             GRect(gx + 22, value_y, temp_sz.w + 2, temp_sz.h + 2));
 
   char hilo_buf[16];
   snprintf(hilo_buf, sizeof(hilo_buf), "H%d°  L%d°", s_wx_hi, s_wx_lo);
-  GSize hilo_sz = text_size(hilo_buf, s_font_tech8);
-  int hy = value_y + temp_sz.h + 3;
+  GSize hilo_sz = text_size(hilo_buf, s_font_tech11);
+  int hy = value_y + temp_sz.h + 1;
   int hx = area.origin.x + (area.size.w - hilo_sz.w) / 2;
   // "H" + hi in accent, rest in mute — draw in two passes.
   char hi_part[8];
   snprintf(hi_part, sizeof(hi_part), "H%d°", s_wx_hi);
-  GSize hi_sz = text_size(hi_part, s_font_tech8);
-  draw_text(ctx, hi_part, s_font_tech8, T->accent,
+  GSize hi_sz = text_size(hi_part, s_font_tech11);
+  draw_text(ctx, hi_part, s_font_tech11, T->accent,
             GRect(hx, hy, hi_sz.w + 2, hi_sz.h + 2));
   char lo_part[8];
   snprintf(lo_part, sizeof(lo_part), "L%d°", s_wx_lo);
-  draw_text(ctx, lo_part, s_font_tech8, T->mute,
+  draw_text(ctx, lo_part, s_font_tech11, T->mute,
             GRect(hx + hi_sz.w + 6, hy, hilo_sz.w, hi_sz.h + 2));
 }
 
 static void draw_steps_section(GContext *ctx, GRect area, int label_y,
                                int value_y) {
-  GSize w = text_size("STEPS", s_font_tech8);
-  draw_text(ctx, "STEPS", s_font_tech8, T->mute,
+  GSize w = text_size("STEPS", s_font_tech11);
+  draw_text(ctx, "STEPS", s_font_tech11, T->mute,
             GRect(area.origin.x + (area.size.w - w.w) / 2, label_y,
                   w.w + 2, w.h + 2));
 
@@ -443,8 +444,8 @@ static void draw_steps_section(GContext *ctx, GRect area, int label_y,
   } else {
     snprintf(steps_buf, sizeof(steps_buf), "%d", s_steps);
   }
-  GSize st_sz = text_size(steps_buf, s_font_tech18);
-  draw_text(ctx, steps_buf, s_font_tech18, T->ink,
+  GSize st_sz = text_size(steps_buf, s_font_tech24);
+  draw_text(ctx, steps_buf, s_font_tech24, T->ink,
             GRect(area.origin.x + (area.size.w - st_sz.w) / 2, value_y,
                   st_sz.w + 2, st_sz.h + 2));
 
@@ -453,7 +454,7 @@ static void draw_steps_section(GContext *ctx, GRect area, int label_y,
   int bar_w = area.size.w * 85 / 100;
   if (bar_w > 90) bar_w = 90;
   int bx = area.origin.x + (area.size.w - bar_w) / 2;
-  int by = value_y + st_sz.h + 4;
+  int by = value_y + st_sz.h + 2;
   graphics_context_set_stroke_color(ctx, T->frame);
   graphics_draw_rect(ctx, GRect(bx, by, bar_w, 4));
   int goal = g_settings.step_goal > 0 ? g_settings.step_goal : 1;
@@ -464,8 +465,8 @@ static void draw_steps_section(GContext *ctx, GRect area, int label_y,
 
 static void draw_heart_section(GContext *ctx, GRect area, int label_y,
                                int value_y) {
-  GSize w = text_size("HEART", s_font_tech8);
-  draw_text(ctx, "HEART", s_font_tech8, T->mute,
+  GSize w = text_size("HEART", s_font_tech11);
+  draw_text(ctx, "HEART", s_font_tech11, T->mute,
             GRect(area.origin.x + (area.size.w - w.w) / 2, label_y,
                   w.w + 2, w.h + 2));
 
@@ -475,32 +476,32 @@ static void draw_heart_section(GContext *ctx, GRect area, int label_y,
   } else {
     strcpy(buf, "--");
   }
-  GSize v_sz = text_size(buf, s_font_tech18);
-  draw_text(ctx, buf, s_font_tech18, T->ink,
+  GSize v_sz = text_size(buf, s_font_tech24);
+  draw_text(ctx, buf, s_font_tech24, T->ink,
             GRect(area.origin.x + (area.size.w - v_sz.w) / 2, value_y,
                   v_sz.w + 2, v_sz.h + 2));
 
-  GSize u_sz = text_size("BPM", s_font_tech8);
-  draw_text(ctx, "BPM", s_font_tech8, T->accent,
+  GSize u_sz = text_size("BPM", s_font_tech11);
+  draw_text(ctx, "BPM", s_font_tech11, T->accent,
             GRect(area.origin.x + (area.size.w - u_sz.w) / 2,
-                  value_y + v_sz.h + 3, u_sz.w + 2, u_sz.h + 2));
+                  value_y + v_sz.h + 1, u_sz.w + 2, u_sz.h + 2));
 }
 
 static void draw_seconds_section(GContext *ctx, GRect area, int label_y,
                                  int value_y) {
-  GSize w = text_size("SECONDS", s_font_tech8);
-  draw_text(ctx, "SECONDS", s_font_tech8, T->mute,
+  GSize w = text_size("SECONDS", s_font_tech11);
+  draw_text(ctx, "SECONDS", s_font_tech11, T->mute,
             GRect(area.origin.x + (area.size.w - w.w) / 2, label_y,
                   w.w + 2, w.h + 2));
 
   char ss[4];
   snprintf(ss, sizeof(ss), "%02d", s_now.tm_sec);
-  GSize sec2 = text_size("88", s_font_dseg22);
+  GSize sec2 = text_size("88", s_font_dseg28);
   int sx = area.origin.x + (area.size.w - sec2.w) / 2;
-  draw_text(ctx, "88", s_font_dseg22, T->ghost,
+  draw_text(ctx, "88", s_font_dseg28, T->ghost,
             GRect(sx, value_y, sec2.w + 2, sec2.h + 2));
   hatch_rect(ctx, GRect(sx, value_y, sec2.w + 2, sec2.h + 2));
-  draw_text(ctx, ss, s_font_dseg22, T->accent,
+  draw_text(ctx, ss, s_font_dseg28, T->accent,
             GRect(sx, value_y, sec2.w + 2, sec2.h + 2));
 }
 
@@ -520,9 +521,9 @@ static void footer_update_proc(Layer *layer, GContext *ctx) {
   uint8_t l = g_settings.slot_left, r = g_settings.slot_right;
   if (l == SLOT_NONE && r == SLOT_NONE) return;
 
-  GSize label_sz = text_size("WEATHER", s_font_tech8);
-  int label_y = 2;
-  int value_y = label_y + label_sz.h + 4;
+  GSize label_sz = text_size("WEATHER", s_font_tech11);
+  int label_y = 0;
+  int value_y = label_y + label_sz.h + 2;
   int half = b.size.w / 2;
 
   if (l != SLOT_NONE && r != SLOT_NONE) {
@@ -646,10 +647,12 @@ static void window_load(Window *window) {
       resource_get_handle(RESOURCE_ID_FONT_LCD_50));
   s_font_dseg42 = fonts_load_custom_font(
       resource_get_handle(RESOURCE_ID_FONT_LCD_42));
+  s_font_dseg28 = fonts_load_custom_font(
+      resource_get_handle(RESOURCE_ID_FONT_LCD_28));
   s_font_dseg22 = fonts_load_custom_font(
       resource_get_handle(RESOURCE_ID_FONT_LCD_22));
-  s_font_tech18 = fonts_load_custom_font(
-      resource_get_handle(RESOURCE_ID_FONT_TECH_18));
+  s_font_tech24 = fonts_load_custom_font(
+      resource_get_handle(RESOURCE_ID_FONT_TECH_24));
   s_font_tech16 = fonts_load_custom_font(
       resource_get_handle(RESOURCE_ID_FONT_TECH_16));
   s_font_tech14 = fonts_load_custom_font(
@@ -701,8 +704,9 @@ static void window_unload(Window *window) {
   layer_destroy(s_footer_layer);
   fonts_unload_custom_font(s_font_dseg50);
   fonts_unload_custom_font(s_font_dseg42);
+  fonts_unload_custom_font(s_font_dseg28);
   fonts_unload_custom_font(s_font_dseg22);
-  fonts_unload_custom_font(s_font_tech18);
+  fonts_unload_custom_font(s_font_tech24);
   fonts_unload_custom_font(s_font_tech16);
   fonts_unload_custom_font(s_font_tech14);
   fonts_unload_custom_font(s_font_tech11);
