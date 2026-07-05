@@ -113,7 +113,9 @@ void world_map_draw(GContext *ctx, GRect bounds, const struct tm *utc,
         graphics_context_set_fill_color(
             ctx, night ? theme->land_night : theme->land_day);
         graphics_fill_rect(ctx, GRect(cx, cy, dot_w, dot_h), 0, GCornerNone);
-      } else {
+      } else if ((r + c) % 2 == 0) {
+        // Sea dots on a checkerboard — every cell matched the stipple's
+        // pitch and made the map read as noise.
         graphics_context_set_fill_color(
             ctx, night ? theme->sea_night : theme->sea_day);
         graphics_fill_rect(ctx, GRect(cx + dot_w / 2, cy + dot_h / 2, 1, 1),
