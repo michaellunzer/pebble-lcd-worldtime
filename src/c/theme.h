@@ -43,10 +43,10 @@ static const Theme THEMES[THEME_COUNT] = {
     .frame      = {GColorBlackARGB8},
     .stipple    = {GColorDarkGrayARGB8},
     .sun        = {GColorChromeYellowARGB8}, // #FFAA00
-    .land_day   = {GColorIslamicGreenARGB8}, // #00AA00
+    .land_day   = {GColorGreenARGB8},        // #00FF00, true green
     .land_night = {GColorDarkGreenARGB8},    // #005500
-    .sea_day    = {GColorVividCeruleanARGB8},// #00AAFF
-    .sea_night  = {GColorDukeBlueARGB8},     // #0000AA
+    .sea_day    = {GColorDukeBlueARGB8},     // #0000AA, dark blue
+    .sea_night  = {GColorOxfordBlueARGB8},   // #000055, darker still
   },
   // Dark faces run full-contrast: white ink and saturated accents —
   // gray-on-black washes out badly on the real panel.
@@ -59,10 +59,10 @@ static const Theme THEMES[THEME_COUNT] = {
     .frame      = {GColorWhiteARGB8},
     .stipple    = {GColorLightGrayARGB8},
     .sun        = {GColorYellowARGB8},       // #FFFF00
-    .land_day   = {GColorGreenARGB8},        // #00FF00
+    .land_day   = {GColorGreenARGB8},        // #00FF00, true green
     .land_night = {GColorDarkGreenARGB8},    // #005500
-    .sea_day    = {GColorVividCeruleanARGB8},// #00AAFF
-    .sea_night  = {GColorDukeBlueARGB8},     // #0000AA
+    .sea_day    = {GColorDukeBlueARGB8},     // #0000AA, dark blue
+    .sea_night  = {GColorOxfordBlueARGB8},   // #000055, darker still
   },
   [THEME_MONO] = {
     .bg         = {GColorWhiteARGB8},
@@ -87,10 +87,10 @@ static const Theme THEMES[THEME_COUNT] = {
     .frame      = {GColorCyanARGB8},
     .stipple    = {GColorLightGrayARGB8},
     .sun        = {GColorYellowARGB8},       // #FFFF00
-    .land_day   = {GColorGreenARGB8},        // #00FF00
+    .land_day   = {GColorGreenARGB8},        // #00FF00, true green
     .land_night = {GColorDarkGreenARGB8},    // #005500
-    .sea_day    = {GColorVividCeruleanARGB8},// #00AAFF
-    .sea_night  = {GColorDukeBlueARGB8},     // #0000AA
+    .sea_day    = {GColorDukeBlueARGB8},     // #0000AA, dark blue
+    .sea_night  = {GColorOxfordBlueARGB8},   // #000055, darker still
   },
 };
 
