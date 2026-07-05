@@ -26,6 +26,7 @@
       "LOC_LAT",
       "LOC_LON",
       "SHOW_DOT",
+      "MAP_STYLE",
       "WX_GPS",
       "THEME_MODE",
       "THEME_SEL",

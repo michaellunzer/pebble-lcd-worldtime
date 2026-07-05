@@ -44,6 +44,16 @@ module.exports = [
         label: 'Show location dot on map'
       },
       {
+        type: 'select',
+        messageKey: 'MAP_STYLE',
+        defaultValue: '0',
+        label: 'Map style',
+        options: [
+          { label: 'Dot matrix', value: '0' },
+          { label: 'Filled continents', value: '1' }
+        ]
+      },
+      {
         type: 'toggle',
         messageKey: 'WX_GPS',
         defaultValue: true,

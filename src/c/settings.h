@@ -23,6 +23,7 @@ typedef struct {
   int32_t loc_lat_x100;  // home dot, centi-degrees (+N)
   int32_t loc_lon_x100;  // centi-degrees (+E)
   bool show_dot;         // draw the home dot on the map
+  uint8_t map_style;     // MapStyle: dot matrix or filled continents
   bool wx_gps;           // weather from phone GPS (else the coords above)
   uint8_t theme_mode;    // ThemeMode
   uint8_t theme_manual;  // ThemeId when manual

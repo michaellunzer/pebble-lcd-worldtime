@@ -350,7 +350,7 @@ static void map_update_proc(Layer *layer, GContext *ctx) {
   // Solid backing — the map box, like the time box, sits stipple-free.
   graphics_context_set_fill_color(ctx, T->bg);
   graphics_fill_rect(ctx, b, 0, GCornerNone);
-  world_map_draw(ctx, b, &utc, T, g_settings.show_dot,
+  world_map_draw(ctx, b, &utc, T, g_settings.map_style, g_settings.show_dot,
                  g_settings.loc_lat_x100, g_settings.loc_lon_x100);
 }
 

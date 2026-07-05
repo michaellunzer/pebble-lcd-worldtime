@@ -24,7 +24,7 @@ of truth for the layout.
 | Header | 10 | 18 | day-of-week + date (16px double-struck bold, full month when it fits), AM/PM (accent) |
 | Battery | 32 | 6 | 10 blocks, lit or empty (one per 10 %), accent ≤ 20 % |
 | Time | 42 | hugs digits | framed box (full 188px width), DSEG7 42px digits + 22px seconds — or 50px digits alone when seconds are off/moved to a slot |
-| Map | below time | remainder | 60 × 19 grid from Natural Earth 110m coastlines — green land / blue sea in day/night shades, yellow sun marker, accent home dot |
+| Map | below time | remainder | Natural Earth 110m coastlines — green land / blue sea in day/night shades, yellow sun marker, accent home dot; dot-matrix (60×19) or filled-continents (94×35) style |
 | Footer | 172 | 50 | two unlabeled slots: weather (icon + temp) · steps · heart rate · seconds · empty |
 
 Screen padding 6 px; every strip shares the same 188 px column
@@ -37,8 +37,9 @@ time box and the map, which sit on solid backing.
 All user options live in a Clay configuration page (open the watchface's
 settings in the Pebble mobile app):
 
-- **Location** — home-dot latitude / longitude (drawn on the map), and
-  whether weather uses the phone's GPS or those fixed coordinates.
+- **Location** — home-dot latitude / longitude (drawn on the map), map
+  style (dot matrix or filled continents), and whether weather uses the
+  phone's GPS or those fixed coordinates.
 - **Theme** — one of the four LCD variants, either fixed or in **auto
   day/night mode**: pick a day theme and a night theme plus the hours
   they switch (defaults: positive 07:00–20:00, negative overnight).

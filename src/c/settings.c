@@ -19,6 +19,7 @@ static void settings_defaults(void) {
     .loc_lat_x100 = 3777,    // San Francisco
     .loc_lon_x100 = -12242,
     .show_dot = true,
+    .map_style = 0, // MAP_STYLE_DOTS
     .wx_gps = true,
     .theme_mode = THEME_MODE_AUTO,
     .theme_manual = THEME_POSITIVE,
@@ -47,6 +48,7 @@ static void settings_sanitize(void) {
   if (g_settings.theme_night >= THEME_COUNT) g_settings.theme_night = 0;
   g_settings.day_start %= 24;
   g_settings.night_start %= 24;
+  if (g_settings.map_style > 1) g_settings.map_style = 0;
   if (g_settings.slot_left > SLOT_NONE) g_settings.slot_left = SLOT_WEATHER;
   if (g_settings.slot_right > SLOT_NONE) g_settings.slot_right = SLOT_STEPS;
   if (g_settings.step_goal < 100) g_settings.step_goal = 10000;
@@ -82,6 +84,10 @@ bool settings_apply_message(DictionaryIterator *iter) {
   }
   if ((t = dict_find(iter, MESSAGE_KEY_SHOW_DOT))) {
     g_settings.show_dot = tuple_int(t) != 0;
+    seen = true;
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_MAP_STYLE))) {
+    g_settings.map_style = tuple_int(t);
     seen = true;
   }
   if ((t = dict_find(iter, MESSAGE_KEY_WX_GPS))) {
