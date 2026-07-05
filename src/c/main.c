@@ -33,6 +33,7 @@
 // map absorbs whatever vertical space is left — see apply_layout().
 
 #define BATTERY_LOW_PCT 20
+#define STIPPLE_SPACING 3
 
 // Weather condition codes shared with src/pkjs/index.js.
 enum WeatherKind { WX_SUN = 0, WX_CLOUD = 1, WX_RAIN = 2, WX_MOON = 3 };
@@ -49,6 +50,8 @@ static Layer *s_bg_layer, *s_header_layer, *s_battery_layer, *s_time_layer,
 static GFont s_font_dseg50, s_font_dseg42, s_font_dseg28, s_font_dseg22,
              s_font_tech24, s_font_tech16, s_font_tech14, s_font_tech11,
              s_font_tech8;
+static GBitmap *s_stipple;
+static GColor s_stipple_palette[2];
 static GBitmap *s_hatch;
 static GColor s_hatch_palette[2];
 
@@ -97,6 +100,7 @@ static void refresh_theme(void) {
   const Theme *next = active_theme();
   if (next == T) return;
   T = next;
+  s_stipple_palette[1] = T->stipple;
   s_hatch_palette[1] = T->bg;
   if (!s_bg_layer) return; // before window_load — nothing to redraw yet
   layer_mark_dirty(s_bg_layer);
@@ -133,6 +137,28 @@ static void draw_text_bold(GContext *ctx, const char *text, GFont font,
 
 // ------------------------------------------------------------- background
 
+// The stipple is prebuilt as a 1-bit palettized bitmap (transparent +
+// dot color) so the per-frame cost is one blit, not ~5k pixel calls.
+// It textures the whole face; the time box and map paint over it.
+static void stipple_create(void) {
+  // The palette must outlive the bitmap — the renderer reads it on
+  // every blit (it's also how theme swaps recolor the dots).
+  s_stipple_palette[0] = GColorClear;
+  s_stipple_palette[1] = T->stipple;
+  s_stipple = gbitmap_create_blank_with_palette(
+      GSize(SCREEN_W, SCREEN_H), GBitmapFormat1BitPalette,
+      s_stipple_palette, false);
+  if (!s_stipple) return;
+  uint8_t *data = gbitmap_get_data(s_stipple);
+  uint16_t stride = gbitmap_get_bytes_per_row(s_stipple);
+  for (int y = 0; y < SCREEN_H; y += STIPPLE_SPACING) {
+    uint8_t *row = data + y * stride;
+    for (int x = 0; x < SCREEN_W; x += STIPPLE_SPACING) {
+      row[x / 8] |= 0x80 >> (x % 8);
+    }
+  }
+}
+
 // Unlit 7-segment "ghosts" get a checkerboard of bg-colored dots blitted
 // over them — halves their intensity with an LCD-like hatch texture.
 // One 8x8 tile, tiled across the target rect by the renderer.
@@ -161,6 +187,11 @@ static void bg_update_proc(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
   graphics_context_set_fill_color(ctx, T->bg);
   graphics_fill_rect(ctx, bounds, 0, GCornerNone);
+
+  if (s_stipple) {
+    graphics_context_set_compositing_mode(ctx, GCompOpSet);
+    graphics_draw_bitmap_in_rect(ctx, s_stipple, bounds);
+  }
 
   // Outer LCD frame line (inset 3).
   graphics_context_set_stroke_color(ctx, T->mute);
@@ -248,7 +279,9 @@ static void time_update_proc(Layer *layer, GContext *ctx) {
   int hour12 = s_now.tm_hour % 12;
   if (hour12 == 0) hour12 = 12;
   char hh[4], mm[4], ss[4];
-  snprintf(hh, sizeof(hh), "%02d", hour12);
+  // Without the leading zero the tens digit simply stays unlit (its
+  // ghost remains), like a real LCD — the layout doesn't shift.
+  snprintf(hh, sizeof(hh), g_settings.lead_zero ? "%02d" : "%d", hour12);
   snprintf(mm, sizeof(mm), "%02d", s_now.tm_min);
   snprintf(ss, sizeof(ss), "%02d", s_now.tm_sec);
 
@@ -288,7 +321,9 @@ static void time_update_proc(Layer *layer, GContext *ctx) {
 
   // Lit digits. Colon blinks at the design's 0.5 Hz cycle whenever
   // seconds tick somewhere (steady on minute-only wakeups).
-  draw_text(ctx, hh, tf, T->ink, GRect(x, y, d2.w + 2, d2.h + 2));
+  GSize hh_sz = text_size(hh, tf);
+  draw_text(ctx, hh, tf, T->ink,
+            GRect(x + d2.w - hh_sz.w, y, hh_sz.w + 2, d2.h + 2));
   if (!seconds_active() || s_now.tm_sec % 2 == 0) {
     draw_text(ctx, ":", tf, T->ink,
               GRect(x + d2.w, y, colon.w + 2, d2.h + 2));
@@ -312,6 +347,9 @@ static void map_update_proc(Layer *layer, GContext *ctx) {
   GRect b = layer_get_bounds(layer);
   time_t now = time(NULL);
   struct tm utc = *gmtime(&now);
+  // Solid backing — the map box, like the time box, sits stipple-free.
+  graphics_context_set_fill_color(ctx, T->bg);
+  graphics_fill_rect(ctx, b, 0, GCornerNone);
   world_map_draw(ctx, b, &utc, T, g_settings.show_dot,
                  g_settings.loc_lat_x100, g_settings.loc_lon_x100);
 }
@@ -470,8 +508,8 @@ static void apply_layout(void) {
   layer_set_frame(s_time_layer,
                   GRect(PAD, TIME_TOP, SCREEN_W - 2 * PAD, time_h));
   int map_top = TIME_TOP + time_h + 4;
-  layer_set_frame(s_map_layer,
-                  GRect(INNER_X, map_top, INNER_W, FOOTER_TOP - 4 - map_top));
+  layer_set_frame(s_map_layer, GRect(PAD, map_top, SCREEN_W - 2 * PAD,
+                                     FOOTER_TOP - 4 - map_top));
 }
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
@@ -581,17 +619,22 @@ static void window_load(Window *window) {
   s_font_tech8 = fonts_load_custom_font(
       resource_get_handle(RESOURCE_ID_FONT_TECH_8));
 
+  stipple_create();
   hatch_create();
 
   s_bg_layer = layer_create(GRect(0, 0, SCREEN_W, SCREEN_H));
   layer_set_update_proc(s_bg_layer, bg_update_proc);
   layer_add_child(root, s_bg_layer);
 
-  s_header_layer = layer_create(GRect(INNER_X, HEADER_TOP, INNER_W, HEADER_H));
+  // Every strip shares the time box's full 188px column (x = PAD) so
+  // the boxes line up down the face.
+  s_header_layer = layer_create(GRect(PAD, HEADER_TOP, SCREEN_W - 2 * PAD,
+                                      HEADER_H));
   layer_set_update_proc(s_header_layer, header_update_proc);
   layer_add_child(root, s_header_layer);
 
-  s_battery_layer = layer_create(GRect(INNER_X, BATT_TOP, INNER_W, BATT_H));
+  s_battery_layer = layer_create(GRect(PAD, BATT_TOP, SCREEN_W - 2 * PAD,
+                                       BATT_H));
   layer_set_update_proc(s_battery_layer, battery_update_proc);
   layer_add_child(root, s_battery_layer);
 
@@ -602,11 +645,12 @@ static void window_load(Window *window) {
   layer_set_update_proc(s_time_layer, time_update_proc);
   layer_add_child(root, s_time_layer);
 
-  s_map_layer = layer_create(GRect(INNER_X, TIME_TOP, INNER_W, 10));
+  s_map_layer = layer_create(GRect(PAD, TIME_TOP, SCREEN_W - 2 * PAD, 10));
   layer_set_update_proc(s_map_layer, map_update_proc);
   layer_add_child(root, s_map_layer);
 
-  s_footer_layer = layer_create(GRect(INNER_X, FOOTER_TOP, INNER_W, FOOTER_H));
+  s_footer_layer = layer_create(GRect(PAD, FOOTER_TOP, SCREEN_W - 2 * PAD,
+                                      FOOTER_H));
   layer_set_update_proc(s_footer_layer, footer_update_proc);
   layer_add_child(root, s_footer_layer);
 
@@ -629,6 +673,7 @@ static void window_unload(Window *window) {
   fonts_unload_custom_font(s_font_tech14);
   fonts_unload_custom_font(s_font_tech11);
   fonts_unload_custom_font(s_font_tech8);
+  if (s_stipple) gbitmap_destroy(s_stipple);
   if (s_hatch) gbitmap_destroy(s_hatch);
 }
 

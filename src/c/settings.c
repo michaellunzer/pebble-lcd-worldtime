@@ -27,6 +27,7 @@ static void settings_defaults(void) {
     .day_start = 7,
     .night_start = 20,
     .show_seconds = true,
+    .lead_zero = true,
     .slot_left = SLOT_WEATHER,
     .slot_right = SLOT_STEPS,
     .use_celsius = false,
@@ -113,6 +114,10 @@ bool settings_apply_message(DictionaryIterator *iter) {
   }
   if ((t = dict_find(iter, MESSAGE_KEY_SHOW_SECONDS))) {
     g_settings.show_seconds = tuple_int(t) != 0;
+    seen = true;
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_LEAD_ZERO))) {
+    g_settings.lead_zero = tuple_int(t) != 0;
     seen = true;
   }
   if ((t = dict_find(iter, MESSAGE_KEY_SLOT_LEFT))) {

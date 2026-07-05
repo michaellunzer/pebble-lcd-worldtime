@@ -121,6 +121,14 @@ module.exports = [
           'wakeups and better battery.'
       },
       {
+        type: 'toggle',
+        messageKey: 'LEAD_ZERO',
+        defaultValue: true,
+        label: 'Leading zero on hour',
+        description: 'Off shows 2:32 instead of 02:32 (the unlit digit ' +
+          'keeps its ghost, like a real LCD).'
+      },
+      {
         type: 'select',
         messageKey: 'SLOT_LEFT',
         defaultValue: '0',

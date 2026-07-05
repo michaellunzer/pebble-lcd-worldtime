@@ -27,9 +27,10 @@ of truth for the layout.
 | Map | below time | remainder | 60 × 19 grid from Natural Earth 110m coastlines — green land / blue sea in day/night shades, yellow sun marker, accent home dot |
 | Footer | 172 | 50 | two unlabeled slots: weather (icon + temp) · steps · heart rate · seconds · empty |
 
-Screen padding 6 px; content inset to x = 10, width 180. The face is a
-clean solid substrate (the design's stipple texture read as noise on
-the physical panel and was dropped).
+Screen padding 6 px; every strip shares the same 188 px column
+(x = 6) so the boxes align down the face. The LCD stipple texture
+(prebuilt 1-bit bitmap, one blit per frame) covers the face except the
+time box and the map, which sit on solid backing.
 
 ## Settings
 
@@ -41,7 +42,8 @@ settings in the Pebble mobile app):
 - **Theme** — one of the four LCD variants, either fixed or in **auto
   day/night mode**: pick a day theme and a night theme plus the hours
   they switch (defaults: positive 07:00–20:00, negative overnight).
-- **Display** — seconds beside the time, and what each bottom box shows:
+- **Display** — seconds beside the time, leading zero on the hour, and
+  what each bottom box shows:
   weather, steps, heart rate, seconds, or empty (a solo box takes the
   full footer width). Putting seconds in a box hides the inline column
   and grows the time to 50 px. With no seconds anywhere the face wakes
