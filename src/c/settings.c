@@ -29,6 +29,9 @@ static void settings_defaults(void) {
     .night_start = 20,
     .show_seconds = true,
     .lead_zero = true,
+    .use_24h = false,
+    .date_order = 0, // DOW date MONTH
+    .date_lead_zero = true,
     .slot_left = SLOT_WEATHER,
     .slot_right = SLOT_STEPS,
     .use_celsius = false,
@@ -49,6 +52,7 @@ static void settings_sanitize(void) {
   g_settings.day_start %= 24;
   g_settings.night_start %= 24;
   if (g_settings.map_style > 1) g_settings.map_style = 0;
+  if (g_settings.date_order > 5) g_settings.date_order = 0;
   if (g_settings.slot_left > SLOT_NONE) g_settings.slot_left = SLOT_WEATHER;
   if (g_settings.slot_right > SLOT_NONE) g_settings.slot_right = SLOT_STEPS;
   if (g_settings.step_goal < 100) g_settings.step_goal = 10000;
@@ -124,6 +128,18 @@ bool settings_apply_message(DictionaryIterator *iter) {
   }
   if ((t = dict_find(iter, MESSAGE_KEY_LEAD_ZERO))) {
     g_settings.lead_zero = tuple_int(t) != 0;
+    seen = true;
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_USE_24H))) {
+    g_settings.use_24h = tuple_int(t) != 0;
+    seen = true;
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_DATE_ORDER))) {
+    g_settings.date_order = tuple_int(t);
+    seen = true;
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_DATE_LZ))) {
+    g_settings.date_lead_zero = tuple_int(t) != 0;
     seen = true;
   }
   if ((t = dict_find(iter, MESSAGE_KEY_SLOT_LEFT))) {

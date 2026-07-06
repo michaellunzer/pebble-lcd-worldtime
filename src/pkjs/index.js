@@ -110,7 +110,7 @@ Pebble.addEventListener('webviewclosed', function (e) {
 
   // Clay select values are strings — the watch expects ints.
   ['THEME_MODE', 'THEME_SEL', 'THEME_DAY', 'THEME_NIGHT',
-   'SLOT_LEFT', 'SLOT_RIGHT'].forEach(function (k) {
+   'SLOT_LEFT', 'SLOT_RIGHT', 'MAP_STYLE', 'DATE_ORDER'].forEach(function (k) {
     dict[messageKeys[k]] = parseInt(dict[messageKeys[k]], 10) || 0;
   });
 

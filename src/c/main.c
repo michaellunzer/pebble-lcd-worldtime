@@ -209,37 +209,51 @@ static void header_update_proc(Layer *layer, GContext *ctx) {
                                "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER",
                                "OCTOBER", "NOVEMBER", "DECEMBER"};
 
-  const char *dow = DOW[s_now.tm_wday];
-  const char *ampm = s_now.tm_hour >= 12 ? "PM" : "AM";
+  // Right: AM/PM in accent at the far edge (24h mode drops it and the
+  // date row gets the full width).
+  int right_limit = b.size.w - 1;
+  if (!g_settings.use_24h) {
+    const char *ampm = s_now.tm_hour >= 12 ? "PM" : "AM";
+    GSize ampm_sz = text_size(ampm, s_font_tech14);
+    int ampm_y = (b.size.h - ampm_sz.h) / 2 - 1;
+    int ampm_x = b.size.w - ampm_sz.w - 1;
+    draw_text_bold(ctx, ampm, s_font_tech14, T->accent,
+                   GRect(ampm_x, ampm_y, ampm_sz.w + 2, ampm_sz.h + 2));
+    right_limit = ampm_x - 8;
+  }
 
-  // Right: AM/PM in accent at the far edge.
-  GSize ampm_sz = text_size(ampm, s_font_tech14);
-  int ampm_y = (b.size.h - ampm_sz.h) / 2 - 1;
-  int ampm_x = b.size.w - ampm_sz.w - 1;
-  draw_text_bold(ctx, ampm, s_font_tech14, T->accent,
-                 GRect(ampm_x, ampm_y, ampm_sz.w + 2, ampm_sz.h + 2));
+  // Left: day-of-week / date / month at 16px, double-struck for weight,
+  // in the user's order; DOW carries ink, the rest mute. Full month
+  // name when it fits, else the 3-letter form.
+  char day_buf[4];
+  snprintf(day_buf, sizeof(day_buf),
+           g_settings.date_lead_zero ? "%02d" : "%d", s_now.tm_mday);
 
-  int right_limit = ampm_x - 8;
+  // Element ids: 0 = DOW, 1 = date, 2 = month.
+  static const uint8_t ORDERS[6][3] = {
+    {0, 1, 2}, {0, 2, 1}, {1, 2, 0}, {2, 1, 0}, {1, 0, 2}, {2, 0, 1},
+  };
+  const uint8_t *ord = ORDERS[g_settings.date_order];
 
-  // Left: DOW (ink) + date (mute) at 16px, double-struck for weight,
-  // with the full month name when it fits (SEPTEMBER etc. fall back
-  // to 3 letters).
+  const char *seg[3];
+  seg[0] = DOW[s_now.tm_wday];
+  seg[1] = day_buf;
+  seg[2] = MONF[s_now.tm_mon];
+  int total = 0;
+  for (int i = 0; i < 3; i++) total += text_size(seg[i], s_font_tech16).w + 1;
+  if (total + 14 > right_limit) seg[2] = MON[s_now.tm_mon];
+
   GSize row_sz = text_size("00", s_font_tech16);
   int text_y = (b.size.h - row_sz.h) / 2 - 1;
-  GSize dow_sz = text_size(dow, s_font_tech16);
-  draw_text_bold(ctx, dow, s_font_tech16, T->ink,
-                 GRect(0, text_y, dow_sz.w + 3, row_sz.h + 2));
-
-  int date_x = dow_sz.w + 7;
-  char date_buf[16];
-  snprintf(date_buf, sizeof(date_buf), "%02d %s", s_now.tm_mday,
-           MONF[s_now.tm_mon]);
-  if (date_x + text_size(date_buf, s_font_tech16).w + 1 > right_limit) {
-    snprintf(date_buf, sizeof(date_buf), "%02d %s", s_now.tm_mday,
-             MON[s_now.tm_mon]);
+  int x = 0;
+  for (int i = 0; i < 3; i++) {
+    const char *s = seg[ord[i]];
+    GSize sz = text_size(s, s_font_tech16);
+    draw_text_bold(ctx, s, s_font_tech16,
+                   ord[i] == 0 ? T->ink : T->mute,
+                   GRect(x, text_y, sz.w + 3, row_sz.h + 2));
+    x += sz.w + 8;
   }
-  draw_text_bold(ctx, date_buf, s_font_tech16, T->mute,
-                 GRect(date_x, text_y, right_limit - date_x, row_sz.h + 2));
 }
 
 // ---------------------------------------------------------------- battery
@@ -276,12 +290,15 @@ static void time_update_proc(Layer *layer, GContext *ctx) {
   graphics_context_set_stroke_color(ctx, T->frame);
   graphics_draw_rect(ctx, b);
 
-  int hour12 = s_now.tm_hour % 12;
-  if (hour12 == 0) hour12 = 12;
+  int hour = s_now.tm_hour;
+  if (!g_settings.use_24h) {
+    hour %= 12;
+    if (hour == 0) hour = 12;
+  }
   char hh[4], mm[4], ss[4];
   // Without the leading zero the tens digit simply stays unlit (its
   // ghost remains), like a real LCD — the layout doesn't shift.
-  snprintf(hh, sizeof(hh), g_settings.lead_zero ? "%02d" : "%d", hour12);
+  snprintf(hh, sizeof(hh), g_settings.lead_zero ? "%02d" : "%d", hour);
   snprintf(mm, sizeof(mm), "%02d", s_now.tm_min);
   snprintf(ss, sizeof(ss), "%02d", s_now.tm_sec);
 

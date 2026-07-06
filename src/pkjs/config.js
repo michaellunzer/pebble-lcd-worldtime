@@ -120,7 +120,41 @@ module.exports = [
   {
     type: 'section',
     items: [
+      { type: 'heading', defaultValue: 'Top bar' },
+      {
+        type: 'select',
+        messageKey: 'DATE_ORDER',
+        defaultValue: '0',
+        label: 'Date order',
+        options: [
+          { label: 'Day · Date · Month', value: '0' },
+          { label: 'Day · Month · Date', value: '1' },
+          { label: 'Date · Month · Day', value: '2' },
+          { label: 'Month · Date · Day', value: '3' },
+          { label: 'Date · Day · Month', value: '4' },
+          { label: 'Month · Day · Date', value: '5' }
+        ]
+      },
+      {
+        type: 'toggle',
+        messageKey: 'DATE_LZ',
+        defaultValue: true,
+        label: 'Leading zero on date',
+        description: 'Off shows SAT 4 JULY instead of SAT 04 JULY.'
+      }
+    ]
+  },
+  {
+    type: 'section',
+    items: [
       { type: 'heading', defaultValue: 'Display' },
+      {
+        type: 'toggle',
+        messageKey: 'USE_24H',
+        defaultValue: false,
+        label: '24-hour time',
+        description: 'On shows 21:32 and drops AM/PM from the top bar.'
+      },
       {
         type: 'toggle',
         messageKey: 'SHOW_SECONDS',

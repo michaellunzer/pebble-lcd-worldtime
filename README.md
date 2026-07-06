@@ -43,7 +43,10 @@ settings in the Pebble mobile app):
 - **Theme** — one of the four LCD variants, either fixed or in **auto
   day/night mode**: pick a day theme and a night theme plus the hours
   they switch (defaults: positive 07:00–20:00, negative overnight).
-- **Display** — seconds beside the time, leading zero on the hour, and
+- **Top bar** — the order of day-of-week / date / month (all six
+  arrangements) and the date's leading zero.
+- **Display** — 12/24-hour time (24h drops AM/PM from the top bar),
+  seconds beside the time, leading zero on the hour, and
   what each bottom box shows:
   weather, steps, heart rate, seconds, or empty (a solo box takes the
   full footer width). Putting seconds in a box hides the inline column

@@ -33,6 +33,9 @@ typedef struct {
   uint8_t night_start;   // hour the night theme takes over (0-23)
   bool show_seconds;     // seconds column beside the time (SECOND_UNIT)
   bool lead_zero;        // "02:32" vs "2:32"
+  bool use_24h;          // 24-hour clock (hides AM/PM in the header)
+  uint8_t date_order;    // header order of day-of-week / date / month, 0-5
+  bool date_lead_zero;   // "04 JULY" vs "4 JULY"
   uint8_t slot_left;     // SlotKind for the bottom-left box
   uint8_t slot_right;    // SlotKind for the bottom-right box
   bool use_celsius;      // display unit; pkjs fetches accordingly
