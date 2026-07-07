@@ -21,7 +21,7 @@ of truth for the layout.
 
 | Strip | Y | Height | Content |
 |---|---|---|---|
-| Header | 10 | 18 | day-of-week + date (16px double-struck bold, full month when it fits), AM/PM (accent) |
+| Header | 8 | 20 | day-of-week + date (18px double-struck bold, configurable order, full month when it fits), AM/PM 16px (accent, 12h mode) |
 | Battery | 32 | 6 | 10 blocks, lit or empty (one per 10 %), accent ≤ 20 % |
 | Time | 42 | hugs digits | framed box (full 188px width), DSEG7 42px digits + 22px seconds — or 50px digits alone when seconds are off/moved to a slot |
 | Map | below time | remainder | Natural Earth 110m coastlines — green land / blue sea in day/night shades, yellow sun marker, accent home dot; dot-matrix (60×19) or filled-continents (94×35) style |
@@ -116,5 +116,5 @@ own `-Dtime_t=long`.
   (42 px time, 22 px seconds). SIL OFL 1.1, see
   `resources/fonts/DSEG-LICENSE.txt`.
 - [Share Tech Mono](https://fonts.google.com/specimen/Share+Tech+Mono) —
-  labels (18/14/11/8 px). SIL OFL 1.1, see
+  labels (24/18/16/14/11/8 px). SIL OFL 1.1, see
   `resources/fonts/ShareTechMono-OFL.txt`.

@@ -22,8 +22,8 @@
 #define INNER_X (PAD + 4)             // 10
 #define INNER_W (SCREEN_W - 2 * INNER_X) // 180
 
-#define HEADER_TOP (PAD + 4)          // 10
-#define HEADER_H 18
+#define HEADER_TOP (PAD + 2)          // 8 — the 18px header type needs it
+#define HEADER_H 20
 #define BATT_TOP (HEADER_TOP + HEADER_H + 4) // 32
 #define BATT_H 6
 #define TIME_TOP (BATT_TOP + BATT_H + 4)     // 42
@@ -48,8 +48,8 @@ static Layer *s_bg_layer, *s_header_layer, *s_battery_layer, *s_time_layer,
              *s_map_layer, *s_footer_layer;
 
 static GFont s_font_dseg50, s_font_dseg42, s_font_dseg28, s_font_dseg22,
-             s_font_tech24, s_font_tech16, s_font_tech14, s_font_tech11,
-             s_font_tech8;
+             s_font_tech24, s_font_tech18, s_font_tech16, s_font_tech14,
+             s_font_tech11, s_font_tech8;
 static GBitmap *s_stipple;
 static GColor s_stipple_palette[2];
 static GBitmap *s_hatch;
@@ -214,15 +214,15 @@ static void header_update_proc(Layer *layer, GContext *ctx) {
   int right_limit = b.size.w - 1;
   if (!g_settings.use_24h) {
     const char *ampm = s_now.tm_hour >= 12 ? "PM" : "AM";
-    GSize ampm_sz = text_size(ampm, s_font_tech14);
+    GSize ampm_sz = text_size(ampm, s_font_tech16);
     int ampm_y = (b.size.h - ampm_sz.h) / 2 - 1;
     int ampm_x = b.size.w - ampm_sz.w - 1;
-    draw_text_bold(ctx, ampm, s_font_tech14, T->accent,
+    draw_text_bold(ctx, ampm, s_font_tech16, T->accent,
                    GRect(ampm_x, ampm_y, ampm_sz.w + 2, ampm_sz.h + 2));
     right_limit = ampm_x - 8;
   }
 
-  // Left: day-of-week / date / month at 16px, double-struck for weight,
+  // Left: day-of-week / date / month at 18px, double-struck for weight,
   // in the user's order; DOW carries ink, the rest mute. Full month
   // name when it fits, else the 3-letter form.
   char day_buf[4];
@@ -240,16 +240,16 @@ static void header_update_proc(Layer *layer, GContext *ctx) {
   seg[1] = day_buf;
   seg[2] = MONF[s_now.tm_mon];
   int total = 0;
-  for (int i = 0; i < 3; i++) total += text_size(seg[i], s_font_tech16).w + 1;
+  for (int i = 0; i < 3; i++) total += text_size(seg[i], s_font_tech18).w + 1;
   if (total + 14 > right_limit) seg[2] = MON[s_now.tm_mon];
 
-  GSize row_sz = text_size("00", s_font_tech16);
+  GSize row_sz = text_size("00", s_font_tech18);
   int text_y = (b.size.h - row_sz.h) / 2 - 1;
   int x = 0;
   for (int i = 0; i < 3; i++) {
     const char *s = seg[ord[i]];
-    GSize sz = text_size(s, s_font_tech16);
-    draw_text_bold(ctx, s, s_font_tech16,
+    GSize sz = text_size(s, s_font_tech18);
+    draw_text_bold(ctx, s, s_font_tech18,
                    ord[i] == 0 ? T->ink : T->mute,
                    GRect(x, text_y, sz.w + 3, row_sz.h + 2));
     x += sz.w + 8;
@@ -627,6 +627,8 @@ static void window_load(Window *window) {
       resource_get_handle(RESOURCE_ID_FONT_LCD_22));
   s_font_tech24 = fonts_load_custom_font(
       resource_get_handle(RESOURCE_ID_FONT_TECH_24));
+  s_font_tech18 = fonts_load_custom_font(
+      resource_get_handle(RESOURCE_ID_FONT_TECH_18));
   s_font_tech16 = fonts_load_custom_font(
       resource_get_handle(RESOURCE_ID_FONT_TECH_16));
   s_font_tech14 = fonts_load_custom_font(
@@ -686,6 +688,7 @@ static void window_unload(Window *window) {
   fonts_unload_custom_font(s_font_dseg28);
   fonts_unload_custom_font(s_font_dseg22);
   fonts_unload_custom_font(s_font_tech24);
+  fonts_unload_custom_font(s_font_tech18);
   fonts_unload_custom_font(s_font_tech16);
   fonts_unload_custom_font(s_font_tech14);
   fonts_unload_custom_font(s_font_tech11);

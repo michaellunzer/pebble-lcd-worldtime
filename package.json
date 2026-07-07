@@ -78,6 +78,12 @@
         },
         {
           "type": "font",
+          "name": "FONT_TECH_18",
+          "file": "fonts/ShareTechMono-Regular.ttf",
+          "characterRegex": "[A-Z0-9 ]"
+        },
+        {
+          "type": "font",
           "name": "FONT_TECH_16",
           "file": "fonts/ShareTechMono-Regular.ttf",
           "characterRegex": "[A-Z0-9 ]"
