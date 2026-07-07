@@ -217,9 +217,18 @@ markers:
     int32_t sun_x =
         x0 + (int32_t)(((int64_t)(sublon_x100 + 18000) * w) / 36000);
     int sun_y = lat_to_y(decl_x100 / 100, y0, h);
+    // Six rays, 60° apart, radiating from just outside the disc.
     graphics_context_set_stroke_color(ctx, theme->ink);
-    graphics_draw_line(ctx, GPoint(sun_x - 7, sun_y), GPoint(sun_x + 7, sun_y));
-    graphics_draw_line(ctx, GPoint(sun_x, sun_y - 7), GPoint(sun_x, sun_y + 7));
+    for (int i = 0; i < 6; i++) {
+      int32_t a = i * TRIG_MAX_ANGLE / 6;
+      int32_t dx = cos_lookup(a), dy = sin_lookup(a);
+      graphics_draw_line(
+          ctx,
+          GPoint(sun_x + dx * 5 / TRIG_MAX_RATIO,
+                 sun_y + dy * 5 / TRIG_MAX_RATIO),
+          GPoint(sun_x + dx * 9 / TRIG_MAX_RATIO,
+                 sun_y + dy * 9 / TRIG_MAX_RATIO));
+    }
     graphics_context_set_fill_color(ctx, theme->sun);
     graphics_fill_circle(ctx, GPoint(sun_x, sun_y), 4);
     graphics_context_set_stroke_color(ctx, theme->ink);

@@ -128,10 +128,12 @@ static void draw_text(GContext *ctx, const char *text, GFont font,
 
 // Share Tech Mono has no bold cut — double-striking 1px apart reads as
 // bold on the physical panel, where the single-weight strokes wash out.
+// The second strike is offset vertically: a horizontal offset merges
+// tight diagonal counters (MON read as NON).
 static void draw_text_bold(GContext *ctx, const char *text, GFont font,
                            GColor color, GRect box) {
   draw_text(ctx, text, font, color, box);
-  box.origin.x += 1;
+  box.origin.y += 1;
   draw_text(ctx, text, font, color, box);
 }
 
