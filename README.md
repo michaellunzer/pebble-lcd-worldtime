@@ -10,7 +10,7 @@ Each theme in both map styles (filled continents and dot matrix):
 | Positive | Negative | Mono | Accent |
 |:---:|:---:|:---:|:---:|
 | ![Positive, filled](screenshots/positive-solid.png) | ![Negative, filled](screenshots/negative-solid.png) | ![Mono, filled](screenshots/mono-solid.png) | ![Accent, filled](screenshots/accent-solid.png) |
-| — | ![Negative, dots](screenshots/negative-dots.png) | ![Mono, dots](screenshots/mono-dots.png) | ![Accent, dots](screenshots/accent-dots.png) |
+| ![Positive, dots](screenshots/positive-dots.png) | ![Negative, dots](screenshots/negative-dots.png) | ![Mono, dots](screenshots/mono-dots.png) | ![Accent, dots](screenshots/accent-dots.png) |
 
 ## Layout (native pixels)
 
