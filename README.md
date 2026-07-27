@@ -5,17 +5,12 @@ A Casio-flavoured LCD digital watchface for the **Pebble Time 2** (platform
 `../project/`. The print spec (`Pebble Watchface-print.html`) is the source
 of truth for the layout.
 
-```
-┌──────────────────────────────┐
-│ THU 14 MAY        [SF]  PM   │  header 18px (16px type, full month)
-│ ▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯         │  battery bar 6px (20 segments + ghost)
-│ ┌──────────────────────────┐ │
-│ │  02:32  ³²SEC            │ │  time box hugs digits: 42px (+22px
-│ └──────────────────────────┘ │  seconds) or 50px when seconds move
-│ ▓▓░ dot-matrix world map ░▓▓ │  green/blue map, day/night shading
-│  WEATHER      │      STEPS   │  two slots: weather/steps/heart/sec
-└──────────────────────────────┘
-```
+Each theme in both map styles (filled continents and dot matrix):
+
+| Positive | Negative | Mono | Accent |
+|:---:|:---:|:---:|:---:|
+| ![Positive, filled](screenshots/positive-solid.png) | ![Negative, filled](screenshots/negative-solid.png) | ![Mono, filled](screenshots/mono-solid.png) | ![Accent, filled](screenshots/accent-solid.png) |
+| — | ![Negative, dots](screenshots/negative-dots.png) | ![Mono, dots](screenshots/mono-dots.png) | ![Accent, dots](screenshots/accent-dots.png) |
 
 ## Layout (native pixels)
 
