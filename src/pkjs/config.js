@@ -5,7 +5,8 @@ var THEME_OPTIONS = [
   { label: 'Positive (tan LCD)', value: '0' },
   { label: 'Negative (dark / amber)', value: '1' },
   { label: 'Mono (ink on paper)', value: '2' },
-  { label: 'Accent (dark / teal)', value: '3' }
+  { label: 'Accent (dark / teal)', value: '3' },
+  { label: "Henry's Theme (white / color map)", value: '4' }
 ];
 
 module.exports = [

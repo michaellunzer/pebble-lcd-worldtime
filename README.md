@@ -35,7 +35,7 @@ settings in the Pebble mobile app):
 - **Location** — home-dot latitude / longitude (drawn on the map), map
   style (dot matrix or filled continents), and whether weather uses the
   phone's GPS or those fixed coordinates.
-- **Theme** — one of the four LCD variants, either fixed or in **auto
+- **Theme** — one of the five LCD variants (including Henry's Theme: Mono's white face with the colored map), either fixed or in **auto
   day/night mode**: pick a day theme and a night theme plus the hours
   they switch (defaults: positive 07:00–20:00, negative overnight).
 - **Top bar** — the order of day-of-week / date / month (all six
@@ -56,7 +56,7 @@ on the watch.
 - **Colors** are quantized to Pebble's 64-color palette and pushed
   saturated for the physical panel (the prototype's soft tones washed
   out on-device): dark themes use white ink with ChromeYellow / Cyan
-  accents; positive runs pure black text/accents on Brass. All four
+  accents; positive runs pure black text/accents on Brass. All five
   themes are in `src/c/theme.h`; the active one is at runtime from
   settings.
 - **Ghost segments** render in a solid light color knocked back by a

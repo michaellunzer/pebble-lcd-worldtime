@@ -9,6 +9,7 @@
 //   negative   black face / white ink / amber accent
 //   mono       pure ink on paper, no accent
 //   accent     black face / white ink / cyan accent
+//   henry      white face like mono, but with the colored map
 typedef struct {
   GColor bg;         // face substrate
   GColor ink;        // primary foreground
@@ -30,6 +31,7 @@ typedef enum {
   THEME_NEGATIVE,
   THEME_MONO,
   THEME_ACCENT,
+  THEME_HENRY,
   THEME_COUNT,
 } ThemeId;
 
@@ -88,6 +90,22 @@ static const Theme THEMES[THEME_COUNT] = {
     .stipple    = {GColorLightGrayARGB8},
     .sun        = {GColorYellowARGB8},       // #FFFF00
     .land_day   = {GColorGreenARGB8},        // #00FF00, true green
+    .land_night = {GColorDarkGreenARGB8},    // #005500
+    .sea_day    = {GColorDukeBlueARGB8},     // #0000AA, dark blue
+    .sea_night  = {GColorOxfordBlueARGB8},   // #000055, darker still
+  },
+  // Mono's white face (brighter than tan on dim panels) with a colored
+  // map; greens and sun are darkened since #00FF00/yellow wash out on white.
+  [THEME_HENRY] = {
+    .bg         = {GColorWhiteARGB8},
+    .ink        = {GColorBlackARGB8},
+    .mute       = {GColorDarkGrayARGB8},
+    .accent     = {GColorBlackARGB8},
+    .ghost      = {GColorLightGrayARGB8},
+    .frame      = {GColorBlackARGB8},
+    .stipple    = {GColorDarkGrayARGB8},
+    .sun        = {GColorOrangeARGB8},       // #FF5500
+    .land_day   = {GColorIslamicGreenARGB8}, // #00AA00
     .land_night = {GColorDarkGreenARGB8},    // #005500
     .sea_day    = {GColorDukeBlueARGB8},     // #0000AA, dark blue
     .sea_night  = {GColorOxfordBlueARGB8},   // #000055, darker still
