@@ -13,7 +13,7 @@ module.exports = function (minified) {
     toggle(clayConfig.getItemByMessageKey('THEME_NIGHT'), auto);
     toggle(clayConfig.getItemByMessageKey('DAY_START'), mode === '1');
     toggle(clayConfig.getItemByMessageKey('NIGHT_START'), mode === '1');
-    toggle(clayConfig.getById('SUN_NOTE'), mode === '2');
+    toggle(clayConfig.getItemById('SUN_NOTE'), mode === '2');
   }
 
   clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function () {
