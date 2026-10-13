@@ -36,8 +36,10 @@ settings in the Pebble mobile app):
   style (dot matrix or filled continents), and whether weather uses the
   phone's GPS or those fixed coordinates.
 - **Theme** — one of the five LCD variants (including Henry's Theme: Mono's white face with the colored map), either fixed or in **auto
-  day/night mode**: pick a day theme and a night theme plus the hours
-  they switch (defaults: positive 07:00–20:00, negative overnight).
+  day/night mode**: pick a day theme and a night theme, then choose when
+  they switch — at times you set (to the minute; default 07:00–20:00), or
+  at **sunrise / sunset**, calculated on the watch from the home
+  latitude / longitude (`src/c/sun_times.c`).
 - **Top bar** — the order of day-of-week / date / month (all six
   arrangements) and the date's leading zero.
 - **Display** — 12/24-hour time (24h drops AM/PM from the top bar),

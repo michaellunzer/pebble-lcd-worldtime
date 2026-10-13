@@ -13,6 +13,7 @@
 
 #include <pebble.h>
 #include "settings.h"
+#include "sun_times.h"
 #include "theme.h"
 #include "world_map.h"
 
@@ -79,15 +80,26 @@ static bool seconds_active(void) {
   return g_settings.show_seconds || slot_has(SLOT_SECONDS);
 }
 
-// Resolves the theme from settings: manual pick, or in auto mode the
-// day/night theme by local hour (handles windows that wrap midnight).
+// Resolves the theme from settings: manual pick, or in an auto mode the
+// day/night theme by local time — either the user's set times or today's
+// sunrise/sunset at the home location. Windows may wrap midnight.
 static const Theme *active_theme(void) {
   uint8_t id = g_settings.theme_manual;
-  if (g_settings.theme_mode == THEME_MODE_AUTO) {
-    int h = s_now.tm_hour;
+  if (g_settings.theme_mode != THEME_MODE_MANUAL) {
+    int m = s_now.tm_hour * 60 + s_now.tm_min;
     int day = g_settings.day_start, night = g_settings.night_start;
-    bool is_day = day <= night ? (h >= day && h < night)
-                               : (h >= day || h < night);
+    bool is_day;
+    if (g_settings.theme_mode == THEME_MODE_SUN) {
+      SunKind k = sun_times_get(&s_now, g_settings.loc_lat_x100,
+                                g_settings.loc_lon_x100, &day, &night);
+      is_day = k == SUN_ALWAYS_UP ||
+               (k == SUN_NORMAL &&
+                (day <= night ? (m >= day && m < night)
+                              : (m >= day || m < night)));
+    } else {
+      is_day = day <= night ? (m >= day && m < night)
+                            : (m >= day || m < night);
+    }
     id = is_day ? g_settings.theme_day : g_settings.theme_night;
   }
   if (id >= THEME_COUNT) id = 0;

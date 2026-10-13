@@ -7,7 +7,8 @@
 
 enum ThemeMode {
   THEME_MODE_MANUAL = 0,
-  THEME_MODE_AUTO = 1, // day/night themes switch on the hours below
+  THEME_MODE_AUTO = 1, // day/night themes switch at the set times below
+  THEME_MODE_SUN = 2,  // day/night themes switch at sunrise / sunset
 };
 
 // What a footer box (slot) displays.
@@ -29,8 +30,8 @@ typedef struct {
   uint8_t theme_manual;  // ThemeId when manual
   uint8_t theme_day;     // ThemeId in auto mode, day hours
   uint8_t theme_night;   // ThemeId in auto mode, night hours
-  uint8_t day_start;     // hour the day theme takes over (0-23)
-  uint8_t night_start;   // hour the night theme takes over (0-23)
+  uint16_t day_start;    // minute of day the day theme takes over (0-1439)
+  uint16_t night_start;  // minute of day the night theme takes over
   bool show_seconds;     // seconds column beside the time (SECOND_UNIT)
   bool lead_zero;        // "02:32" vs "2:32"
   bool use_24h;          // 24-hour clock (hides AM/PM in the header)

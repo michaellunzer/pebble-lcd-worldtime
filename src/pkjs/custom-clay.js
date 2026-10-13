@@ -1,17 +1,19 @@
 // Runs inside the Clay config webview: shows only the theme options
-// that apply to the selected mode (single theme vs auto day/night).
+// that apply to the selected mode (single theme, auto at set times, or
+// auto at sunrise / sunset).
 module.exports = function (minified) {
   var clayConfig = this;
 
   function updateThemeMode() {
-    var auto = clayConfig.getItemByMessageKey('THEME_MODE').get() === '1';
-    var autoKeys = ['THEME_DAY', 'THEME_NIGHT', 'DAY_START', 'NIGHT_START'];
-    for (var i = 0; i < autoKeys.length; i++) {
-      var item = clayConfig.getItemByMessageKey(autoKeys[i]);
-      if (auto) { item.show(); } else { item.hide(); }
-    }
-    var single = clayConfig.getItemByMessageKey('THEME_SEL');
-    if (auto) { single.hide(); } else { single.show(); }
+    var mode = clayConfig.getItemByMessageKey('THEME_MODE').get();
+    var auto = mode === '1' || mode === '2';
+    function toggle(item, on) { if (on) { item.show(); } else { item.hide(); } }
+    toggle(clayConfig.getItemByMessageKey('THEME_SEL'), !auto);
+    toggle(clayConfig.getItemByMessageKey('THEME_DAY'), auto);
+    toggle(clayConfig.getItemByMessageKey('THEME_NIGHT'), auto);
+    toggle(clayConfig.getItemByMessageKey('DAY_START'), mode === '1');
+    toggle(clayConfig.getItemByMessageKey('NIGHT_START'), mode === '1');
+    toggle(clayConfig.getById('SUN_NOTE'), mode === '2');
   }
 
   clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function () {

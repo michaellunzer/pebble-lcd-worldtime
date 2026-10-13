@@ -114,6 +114,15 @@ Pebble.addEventListener('webviewclosed', function (e) {
     dict[messageKeys[k]] = parseInt(dict[messageKeys[k]], 10) || 0;
   });
 
+  // Time inputs arrive as "HH:MM" (or a bare hour from an older saved
+  // config); the watch wants minutes since midnight.
+  [['DAY_START', 7 * 60], ['NIGHT_START', 20 * 60]].forEach(function (p) {
+    var key = messageKeys[p[0]];
+    var m = /^(\d{1,2}):(\d{2})/.exec(String(dict[key]));
+    var mins = m ? Number(m[1]) * 60 + Number(m[2]) : Number(dict[key]) * 60;
+    dict[key] = isFinite(mins) && mins >= 0 && mins < 1440 ? mins : p[1];
+  });
+
   prefs = {
     celsius: !!Number(dict[messageKeys.USE_CELSIUS]),
     gps: !!Number(dict[messageKeys.WX_GPS]),
