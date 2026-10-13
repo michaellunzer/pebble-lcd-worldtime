@@ -74,7 +74,8 @@ module.exports = [
         label: 'Theme mode',
         options: [
           { label: 'Single theme', value: '0' },
-          { label: 'Auto: day / night', value: '1' }
+          { label: 'Auto: day / night at set times', value: '1' },
+          { label: 'Auto: day / night at sunrise / sunset', value: '2' }
         ]
       },
       {
@@ -99,22 +100,24 @@ module.exports = [
         options: THEME_OPTIONS
       },
       {
-        type: 'slider',
+        type: 'input',
         messageKey: 'DAY_START',
-        defaultValue: 7,
-        label: 'Day theme starts at (hour)',
-        min: 0,
-        max: 23,
-        step: 1
+        defaultValue: '07:00',
+        label: 'Day theme starts at',
+        attributes: { type: 'time' }
       },
       {
-        type: 'slider',
+        type: 'input',
         messageKey: 'NIGHT_START',
-        defaultValue: 20,
-        label: 'Night theme starts at (hour)',
-        min: 0,
-        max: 23,
-        step: 1
+        defaultValue: '20:00',
+        label: 'Night theme starts at',
+        attributes: { type: 'time' }
+      },
+      {
+        type: 'text',
+        id: 'SUN_NOTE',
+        defaultValue: 'Sunrise and sunset are calculated on the watch for ' +
+          'your home latitude / longitude (Location section above).'
       }
     ]
   },
