@@ -25,8 +25,8 @@ static void settings_defaults(void) {
     .theme_manual = THEME_POSITIVE,
     .theme_day = THEME_POSITIVE,
     .theme_night = THEME_NEGATIVE,
-    .day_start = 7,
-    .night_start = 20,
+    .day_start = 7 * 60,
+    .night_start = 20 * 60,
     .show_seconds = true,
     .lead_zero = true,
     .use_24h = false,
@@ -44,13 +44,13 @@ static void settings_sanitize(void) {
   if (g_settings.loc_lat_x100 > 9000) g_settings.loc_lat_x100 = 9000;
   if (g_settings.loc_lon_x100 < -18000) g_settings.loc_lon_x100 = -18000;
   if (g_settings.loc_lon_x100 > 18000) g_settings.loc_lon_x100 = 18000;
-  if (g_settings.theme_mode > THEME_MODE_AUTO)
+  if (g_settings.theme_mode > THEME_MODE_SUN)
     g_settings.theme_mode = THEME_MODE_MANUAL;
   if (g_settings.theme_manual >= THEME_COUNT) g_settings.theme_manual = 0;
   if (g_settings.theme_day >= THEME_COUNT) g_settings.theme_day = 0;
   if (g_settings.theme_night >= THEME_COUNT) g_settings.theme_night = 0;
-  g_settings.day_start %= 24;
-  g_settings.night_start %= 24;
+  g_settings.day_start %= 1440;
+  g_settings.night_start %= 1440;
   if (g_settings.map_style > 1) g_settings.map_style = 0;
   if (g_settings.date_order > 5) g_settings.date_order = 0;
   if (g_settings.slot_left > SLOT_NONE) g_settings.slot_left = SLOT_WEATHER;
