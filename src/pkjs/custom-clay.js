@@ -7,7 +7,10 @@ module.exports = function (minified) {
   function updateThemeMode() {
     var mode = clayConfig.getItemByMessageKey('THEME_MODE').get();
     var auto = mode === '1' || mode === '2';
-    function toggle(item, on) { if (on) { item.show(); } else { item.hide(); } }
+    function toggle(item, on) {
+      if (!item) { return; }
+      if (on) { item.show(); } else { item.hide(); }
+    }
     toggle(clayConfig.getItemByMessageKey('THEME_SEL'), !auto);
     toggle(clayConfig.getItemByMessageKey('THEME_DAY'), auto);
     toggle(clayConfig.getItemByMessageKey('THEME_NIGHT'), auto);
@@ -17,7 +20,9 @@ module.exports = function (minified) {
   }
 
   clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function () {
-    updateThemeMode();
+    // Listen first so a problem in the initial pass can't leave the
+    // page without live updates.
     clayConfig.getItemByMessageKey('THEME_MODE').on('change', updateThemeMode);
+    updateThemeMode();
   });
 };
