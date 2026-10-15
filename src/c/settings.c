@@ -2,7 +2,11 @@
 #include "theme.h"
 #include <stdlib.h>
 
-#define PERSIST_SETTINGS 100
+// Bump the key whenever Settings changes layout: the struct can keep the
+// same size across a reshuffle (v1 -> v2 did), so the size check alone
+// can't tell an old blob from a new one and would misread its fields.
+#define PERSIST_SETTINGS_V1 100 // pre-minute-times layout, discarded
+#define PERSIST_SETTINGS 101
 
 // Clay sends select values as strings ("3"), sliders and toggles as
 // ints — reading value->int32 on a cstring yields ASCII garbage, so
@@ -60,6 +64,7 @@ static void settings_sanitize(void) {
 
 void settings_load(void) {
   settings_defaults();
+  if (persist_exists(PERSIST_SETTINGS_V1)) persist_delete(PERSIST_SETTINGS_V1);
   if (persist_exists(PERSIST_SETTINGS)) {
     Settings stored;
     int read = persist_read_data(PERSIST_SETTINGS, &stored, sizeof(stored));

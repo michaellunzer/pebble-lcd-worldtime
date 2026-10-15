@@ -1,9 +1,23 @@
 #include "sun_times.h"
-#include <math.h>
 
-#define DEG2RAD 0.017453292519943295
-// Sun's apparent edge: 90.833° zenith (refraction + solar radius).
-#define SUNRISE_ZENITH_COS (-0.014543897651582656) // cos(90.833°)
+// Integer-only NOAA sunrise equation on the watch's sin/cos lookup tables.
+// (The libm double version pulled in soft-float trig and large stack
+// frames; this keeps everything in int32/int64.)
+//
+// Angles are in Pebble units: TRIG_MAX_ANGLE (65536) = 360°, trig results
+// in TRIG_MAX_RATIO (65536) = 1.0.
+
+#define R TRIG_MAX_RATIO
+#define A TRIG_MAX_ANGLE
+// cos(90.833°) — the sun's apparent edge (refraction + solar radius).
+#define COS_ZENITH (-953) // -0.0145439 * 65536
+
+static int32_t trig_sin(int64_t angle) {
+  return sin_lookup((int32_t)(((angle % A) + A) % A));
+}
+static int32_t trig_cos(int64_t angle) {
+  return cos_lookup((int32_t)(((angle % A) + A) % A));
+}
 
 SunKind sun_times_get(const struct tm *now, int32_t lat_x100,
                       int32_t lon_x100, int *sunrise_min, int *sunset_min) {
@@ -20,37 +34,54 @@ SunKind sun_times_get(const struct tm *now, int32_t lat_x100,
     return s_kind;
   }
 
-  const double lat = lat_x100 / 100.0 * DEG2RAD;
-  const double lon = lon_x100 / 100.0;
-  // Fractional year, using local noon of this date.
-  const double g = 2.0 * 3.141592653589793 / 365.0 * (now->tm_yday + 0.5);
+  // Fractional year g = 2π(yday + 0.5)/365 as an angle.
+  const int64_t g = (int64_t)A * (2 * now->tm_yday + 1) / 730;
+  const int64_t sg = trig_sin(g), cg = trig_cos(g);
+  const int64_t s2 = trig_sin(2 * g), c2 = trig_cos(2 * g);
+  const int64_t s3 = trig_sin(3 * g), c3 = trig_cos(3 * g);
 
-  const double eqtime =
-      229.18 * (0.000075 + 0.001868 * cos(g) - 0.032077 * sin(g) -
-                0.014615 * cos(2 * g) - 0.040849 * sin(2 * g));
-  const double decl = 0.006918 - 0.399912 * cos(g) + 0.070257 * sin(g) -
-                      0.006758 * cos(2 * g) + 0.000907 * sin(2 * g) -
-                      0.002697 * cos(3 * g) + 0.00148 * sin(3 * g);
+  // Equation of time, minutes x100 (coefficients x1e6).
+  const int64_t eq_scaled = 75 * (int64_t)R + 1868 * cg - 32077 * sg -
+                            14615 * c2 - 40849 * s2;
+  const int32_t eq_x100 = (int32_t)(eq_scaled * 22918 / (1000000LL * R));
 
-  const double denom = cos(lat) * cos(decl);
+  // Solar declination as an angle (coefficients x1e6, radians -> angle:
+  // /(2π·1e6) with the R factor cancelling).
+  const int64_t decl_scaled = 6918 * (int64_t)R - 399912 * cg + 70257 * sg -
+                              6758 * c2 + 907 * s2 - 2697 * c3 + 1480 * s3;
+  const int64_t decl_angle = decl_scaled / 6283185;
+
+  const int64_t lat_angle = (int64_t)lat_x100 * A / 36000;
+  const int64_t sin_sin =
+      (int64_t)trig_sin(lat_angle) * trig_sin(decl_angle) / R;
+  const int64_t den = (int64_t)trig_cos(lat_angle) * trig_cos(decl_angle) / R;
+
   SunKind kind = SUN_NORMAL;
   int rise = 0, set = 0;
-  if (denom < 1e-9) {
-    // Pole itself: sun is up when its declination is on the same side.
-    kind = (lat * decl > 0) ? SUN_ALWAYS_UP : SUN_ALWAYS_DOWN;
+  if (den <= 0) {
+    // At a pole the sun is up when declination is on the same side.
+    kind = sin_sin > 0 ? SUN_ALWAYS_UP : SUN_ALWAYS_DOWN;
   } else {
-    const double c = SUNRISE_ZENITH_COS / denom - tan(lat) * tan(decl);
-    if (c > 1.0) {
+    // cos(hour angle) = (cos(zenith) - sinφ sinδ) / (cosφ cosδ), in R units
+    const int64_t c = (COS_ZENITH - sin_sin) * R / den;
+    if (c > R) {
       kind = SUN_ALWAYS_DOWN;
-    } else if (c < -1.0) {
+    } else if (c < -R) {
       kind = SUN_ALWAYS_UP;
     } else {
-      const double ha = acos(c) / DEG2RAD; // degrees
-      const double off_min = off / 60.0;
-      double r = 720.0 - 4.0 * (lon + ha) - eqtime + off_min;
-      double s = 720.0 - 4.0 * (lon - ha) - eqtime + off_min;
-      rise = ((int)floor(r + 0.5) % 1440 + 1440) % 1440;
-      set = ((int)floor(s + 0.5) % 1440 + 1440) % 1440;
+      // acos by bisection: cos_lookup falls monotonically over 0..180°.
+      int32_t lo = 0, hi = A / 2;
+      while (hi - lo > 1) {
+        int32_t mid = (lo + hi) / 2;
+        if (cos_lookup(mid) > c) lo = mid; else hi = mid;
+      }
+      const int32_t ha_x100 = (int32_t)((int64_t)hi * 36000 / A); // degrees x100
+      const int32_t off_x100 = (int32_t)(off * 100 / 60);
+      const int32_t base = 72000 - eq_x100 + off_x100; // minutes x100
+      int32_t r = base - 4 * (lon_x100 + ha_x100);
+      int32_t s = base - 4 * (lon_x100 - ha_x100);
+      rise = (((r + 50) / 100) % 1440 + 1440) % 1440;
+      set = (((s + 50) / 100) % 1440 + 1440) % 1440;
     }
   }
 
